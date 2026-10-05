@@ -1,0 +1,39 @@
+# Secrets — must never be uploaded to the deployment (set these as Vercel
+# environment variables instead).
+.env
+.env.*
+serviceAccountKey.json
+*serviceAccount*.json
+
+# Destructive / maintenance scripts — these delete production data and must
+# never be reachable from the deployed serverless bundle.
+wipe_db.js
+wipe_db.ts
+recursive_wipe.js
+clean_users.js
+clean_users.ts
+delete-dummy.js
+delete_test_notifications.js
+src/scripts/delete-all-data.ts
+src/scripts/delete-all-users.ts
+src/scripts/seed_dummy_profiles.js
+seed_dummy_profiles.js
+create-test-accounts.js
+
+# Loose dev / debug scripts — not part of the API.
+check*.js
+check*.ts
+test_*.js
+test.txt
+fix.js
+fix_user.js
+force_complete.js
+mimic_matching.js
+_naveed_verif.js
+_backfill_contact_relocation.js
+migrate_images.ts
+
+# Build output + tests (the Vercel build recompiles from src).
+dist
+security_tests
+public/uploads

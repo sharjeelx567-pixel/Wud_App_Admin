@@ -12,8 +12,28 @@ export async function sendNotification(req: Request, res: Response): Promise<voi
     const audience = req.body.audience || req.body.target || 'all';
     const targetUid = req.body.targetUid || req.body.userId || null;
 
-    if (!title || !body) {
+    // Validate: non-empty, bounded title/body; a known audience; and a
+    // targetUid when audience is 'specific'. Previously the raw body was
+    // trusted, so a huge title/body or an unknown audience was accepted.
+    if (typeof title !== 'string' || typeof body !== 'string' || !title.trim() || !body.trim()) {
       res.status(400).json(errorResponse('Notification title and message body are required.'));
+      return;
+    }
+    if (title.length > 120 || body.length > 1000) {
+      res.status(400).json(errorResponse('Title must be ≤120 and body ≤1000 characters.'));
+      return;
+    }
+    const ALLOWED_AUDIENCES = ['all', 'premium', 'verified', 'male', 'female', 'specific'];
+    if (!ALLOWED_AUDIENCES.includes(audience)) {
+      res.status(400).json(errorResponse('Unknown audience.'));
+      return;
+    }
+    if (audience === 'specific' && (!targetUid || typeof targetUid !== 'string')) {
+      res.status(400).json(errorResponse('A target user is required for a direct notification.'));
+      return;
+    }
+    if (scheduledAt && isNaN(new Date(scheduledAt).getTime())) {
+      res.status(400).json(errorResponse('Invalid schedule date.'));
       return;
     }
 

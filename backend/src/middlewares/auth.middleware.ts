@@ -69,6 +69,13 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       return;
     }
 
+    // Token revocation: a token whose version stamp predates the admin doc's
+    // current tokenVersion was invalidated by a logout or forced revocation.
+    if (((decoded as any).tv || 0) !== (adminData.tokenVersion || 0)) {
+      res.status(401).json({ success: false, error: 'Session signed out. Please log in again.' });
+      return;
+    }
+
     const currentRole: AdminRole = adminData.role || decoded.role;
     const customPermissions: AdminPermission[] = adminData.permissions || [];
     const defaultPermissions = ROLE_DEFAULT_PERMISSIONS[currentRole] || [];

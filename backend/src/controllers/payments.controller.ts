@@ -1,7 +1,7 @@
 ﻿// @ts-nocheck
 import { Request, Response } from 'express';
 import { db } from '../config/firebase';
-import { successResponse, errorResponse } from '../utils/helpers';
+import { successResponse, errorResponse, createAuditLog, getClientIp } from '../utils/helpers';
 import { Query, Timestamp, FieldValue } from 'firebase-admin/firestore';
 
 export async function getTransactions(req: Request, res: Response): Promise<void> {
@@ -65,9 +65,16 @@ export async function refundTransaction(req: Request, res: Response): Promise<vo
     }
 
     const batch = db.batch();
-    batch.update(txRef, { 
+    batch.update(txRef, {
       status: 'refunded',
+      // This is a MANUAL/internal refund — it marks the record and revokes
+      // access, but no external payment gateway is charged back (there is no
+      // gateway integration yet). Labelled so finance can reconcile the
+      // actual money separately.
+      refundType: 'manual_no_gateway',
       refundReason: reason || 'Admin requested',
+      refundedBy: req.admin!.uid,
+      refundedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
     });
 
@@ -78,19 +85,25 @@ export async function refundTransaction(req: Request, res: Response): Promise<vo
       });
     }
 
-    batch.set(db.collection('admin_audit_logs').doc(), {
-      action: 'transaction_refunded',
-      txId,
-      userId: txData.userId,
-      amount: txData.amount,
-      reason,
-      adminId: (req as any).admin?.uid || 'system',
-      timestamp: FieldValue.serverTimestamp(),
-    });
-
     await batch.commit();
 
-    res.json(successResponse({ success: true, message: 'Refund processed successfully' }));
+    // Normalised audit entry (same shape as createAuditLog, which the audit
+    // page renders — the old raw write omitted adminEmail/ip/targetType).
+    await createAuditLog({
+      adminId: req.admin!.uid,
+      adminEmail: req.admin!.email,
+      action: 'REFUND_TRANSACTION',
+      targetId: txId,
+      targetType: 'transaction',
+      details: { userId: txData.userId, amount: txData.amount, reason: reason || null, refundType: 'manual_no_gateway' },
+      timestamp: new Date(),
+      ip: getClientIp(req),
+    });
+
+    res.json(successResponse(
+      { success: true },
+      'Transaction marked as refunded and access revoked. Note: this is a manual refund — no external payment gateway was charged back.'
+    ));
   } catch (error) {
     console.error('[Payments Admin] refundTransaction error:', error);
     res.status(500).json(errorResponse('Failed to refund transaction', error));

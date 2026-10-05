@@ -24,6 +24,7 @@ interface AdminCommunityPost {
   author: { name?: string; email?: string } | null;
   authorDisplayName: string;
   text: string;
+  category?: string;
   imageUrl: string | null;
   status: "active" | "hidden" | "removed";
   moderationReason: string | null;
@@ -90,6 +91,15 @@ function PostComments({ postId }: { postId: string }) {
             <div className="flex items-center gap-2 mt-1">{statusBadge(c.status)}<span className="text-[10px] text-slate-400">{formatDate(c.createdAt)}</span></div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            {(c.status === "hidden" || c.status === "removed") && (
+              <button
+                onClick={() => moderateMutation.mutate({ commentId: c.id, action: "restore" })}
+                disabled={moderateMutation.isPending}
+                className="py-1.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Eye className="w-3 h-3" /> Restore
+              </button>
+            )}
             {c.status !== "hidden" && c.status !== "removed" && (
               <button
                 onClick={() => moderateMutation.mutate({ commentId: c.id, action: "hide" })}
@@ -197,6 +207,9 @@ export default function CommunityPostsPage() {
                     <p className="text-[11px] text-slate-500">community: {post.communityId} · by {post.author?.name || post.authorUid}</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {post.category && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100">{post.category.replace(/_/g, ' ')}</span>
+                    )}
                     <span className="text-xs text-slate-400 flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{formatDate(post.createdAt)}</span>
                     {statusBadge(post.status)}
                   </div>

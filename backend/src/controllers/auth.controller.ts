@@ -5,6 +5,7 @@ import { db, admin } from '../config/firebase';
 import {
   signAccessToken,
   signRefreshToken,
+  verifyAccessToken,
   verifyRefreshToken,
   signChallengeToken,
   verifyChallengeToken,
@@ -85,7 +86,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     // Update last login
     await adminDoc.ref.update({ lastLoginAt: serverTimestamp() });
 
-    const payload = { uid: adminDoc.id, email: adminData.email, role: adminData.role };
+    const payload = { uid: adminDoc.id, email: adminData.email, role: adminData.role, tv: adminData.tokenVersion || 0 };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 
@@ -158,7 +159,7 @@ export async function loginVerifyTwoFactor(req: Request, res: Response): Promise
 
     await adminDoc.ref.update({ lastLoginAt: serverTimestamp() });
 
-    const payload = { uid, email: adminData.email, role: adminData.role };
+    const payload = { uid, email: adminData.email, role: adminData.role, tv: adminData.tokenVersion || 0 };
     console.log(`[Auth] Admin login (2FA verified): ${adminData.email}`);
 
     res.json(successResponse({
@@ -202,12 +203,18 @@ export async function refresh(req: Request, res: Response): Promise<void> {
       res.status(403).json(errorResponse('Your account has been deactivated'));
       return;
     }
+    // Reject a refresh token that predates a logout / forced revocation.
+    if (((decoded as any).tv || 0) !== (adminData.tokenVersion || 0)) {
+      res.status(401).json(errorResponse('This session has been signed out. Please log in again.'));
+      return;
+    }
 
     // Role comes from the live document, never from the presented token.
     const newAccessToken = signAccessToken({
       uid: decoded.uid,
       email: adminData.email,
       role: adminData.role,
+      tv: adminData.tokenVersion || 0,
     });
 
     res.json(successResponse({ accessToken: newAccessToken }, 'Token refreshed'));
@@ -239,6 +246,27 @@ export async function getMe(req: Request, res: Response): Promise<void> {
   }
 }
 
-export async function logout(_req: Request, res: Response): Promise<void> {
+export async function logout(req: Request, res: Response): Promise<void> {
+  // Bump the admin's tokenVersion so every access/refresh token issued before
+  // now stops verifying (real revocation, not just a client-side token drop).
+  // Identify the admin from whichever token is presented — access token in the
+  // Authorization header, or the refresh token in the body.
+  try {
+    let uid: string | null = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try { uid = (verifyAccessToken(authHeader.split(' ')[1]) as any)?.uid || null; } catch {}
+    }
+    if (!uid && req.body?.refreshToken) {
+      try { uid = (verifyRefreshToken(req.body.refreshToken) as any)?.uid || null; } catch {}
+    }
+    if (uid) {
+      await db.collection('admins').doc(uid).update({
+        tokenVersion: admin.firestore.FieldValue.increment(1),
+      });
+    }
+  } catch {
+    // Never fail logout — worst case the token simply expires on its own.
+  }
   res.json(successResponse(null, 'Logged out successfully'));
 }

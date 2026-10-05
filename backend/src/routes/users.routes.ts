@@ -6,6 +6,7 @@ import {
   banUser,
   unbanUser,
   suspendUser,
+  unsuspendUser,
   deleteUser,
   grantPremium,
   revokePremium,
@@ -20,6 +21,7 @@ router.get('/:uid', requirePermission('users.view', 'profiles.view'), getUserByI
 router.post('/:uid/ban', requirePermission('users.manage'), banUser);
 router.post('/:uid/unban', requirePermission('users.manage'), unbanUser);
 router.post('/:uid/suspend', requirePermission('users.manage'), suspendUser);
+router.post('/:uid/unsuspend', requirePermission('users.manage'), unsuspendUser);
 router.delete('/:uid', requirePermission('users.manage'), deleteUser);
 router.post('/:uid/premium', requirePermission('subscriptions.manage', 'users.manage'), grantPremium);
 router.delete('/:uid/premium', requirePermission('subscriptions.manage', 'users.manage'), revokePremium);

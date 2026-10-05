@@ -26,7 +26,16 @@ const loginLimiter = rateLimit({
 router.post('/login', loginLimiter, login);
 // Same limiter: brute-forcing a 6-digit TOTP is otherwise trivial.
 router.post('/login/2fa', loginLimiter, loginVerifyTwoFactor);
-router.post('/refresh', refresh);
+// A stolen refresh token could otherwise be hammered to mint access tokens;
+// a human only needs to refresh a few times per 15 min.
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many refresh attempts. Please sign in again.' },
+});
+router.post('/refresh', refreshLimiter, refresh);
 router.post('/logout', logout);
 router.get('/me', authenticate, getMe);
 

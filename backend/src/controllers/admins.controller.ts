@@ -199,8 +199,21 @@ export async function updateAdmin(req: Request, res: Response): Promise<void> {
     }
 
     if (password) {
+      // Resetting ANOTHER admin's password is an account-takeover primitive
+      // (set a new password, then log in as them). Restrict it to super_admins.
+      // A non-super admin may still change their OWN password here.
+      if (id !== req.admin!.uid && req.admin!.role !== 'super_admin') {
+        res.status(403).json(errorResponse("Only a Super Admin can reset another admin's password."));
+        return;
+      }
+      if (typeof password !== 'string' || password.length < 8) {
+        res.status(400).json(errorResponse('Password must be at least 8 characters.'));
+        return;
+      }
       const salt = await bcrypt.genSalt(10);
       updateData.passwordHash = await bcrypt.hash(password, salt);
+      // Changing the password revokes existing sessions for that admin.
+      (updateData as any).tokenVersion = firebaseAdmin.firestore.FieldValue.increment(1);
       try {
         await firebaseAdmin.auth().updateUser(id, { password });
       } catch (e) {

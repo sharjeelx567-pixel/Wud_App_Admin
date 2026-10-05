@@ -60,6 +60,7 @@ export async function getPosts(req: Request, res: Response): Promise<void> {
           author,
           authorDisplayName: data.authorDisplayName,
           text: data.text,
+          category: data.category || 'general',
           imageUrl: data.imageUrl || null,
           status: data.status,
           moderatedBy: data.moderatedBy || null,
@@ -197,3 +198,6 @@ async function moderateComment(req: Request, res: Response, status: 'active' | '
 
 export const hideComment = (req: Request, res: Response) => moderateComment(req, res, 'hidden', 'HIDE_COMMUNITY_COMMENT');
 export const removeComment = (req: Request, res: Response) => moderateComment(req, res, 'removed', 'REMOVE_COMMUNITY_COMMENT');
+// Restore a hidden/removed comment back to active (posts already had unhide;
+// comments did not, so a mistakenly-moderated comment couldn't be reinstated).
+export const restoreComment = (req: Request, res: Response) => moderateComment(req, res, 'active', 'RESTORE_COMMUNITY_COMMENT');

@@ -171,6 +171,14 @@ export default function UsersPage() {
     onError: onActionError,
   });
 
+  const unsuspendMutation = useMutation({
+    mutationFn: async (uid: string) => {
+      await api.post(`/users/${uid}/unsuspend`);
+    },
+    onSuccess: onActionSuccess,
+    onError: onActionError,
+  });
+
   const premiumMutation = useMutation({
     mutationFn: async ({ uid, days }: { uid: string; days: number }) => {
       await api.post(`/users/${uid}/premium`, { expiresInDays: days });
@@ -655,6 +663,19 @@ export default function UsersPage() {
                     {/* Suspend or Ban Controls */}
                     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
                       <h4 className="font-bold text-slate-900">Account Safety & Enforcement</h4>
+
+                      {selectedUser.isSuspended && !selectedUser.isBanned && (
+                        <div className="flex items-center justify-between p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                          <span className="text-amber-700 font-bold text-xs">This user is currently suspended.</span>
+                          <button
+                            onClick={() => unsuspendMutation.mutate(selectedUser.uid)}
+                            disabled={unsuspendMutation.isPending}
+                            className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs cursor-pointer disabled:opacity-50"
+                          >
+                            Lift Suspension
+                          </button>
+                        </div>
+                      )}
 
                       {selectedUser.isBanned ? (
                         <div className="flex items-center justify-between">

@@ -203,6 +203,10 @@ export interface AdminJwtPayload {
   email: string;
   role: AdminRole;
   permissions?: AdminPermission[];
+  // Token-version stamp — must match the admin doc's current tokenVersion.
+  // Logout (and any forced revocation) increments the doc's version, which
+  // invalidates every previously-issued access/refresh token for that admin.
+  tv?: number;
   iat?: number;
   exp?: number;
 }

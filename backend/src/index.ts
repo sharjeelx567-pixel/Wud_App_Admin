@@ -63,8 +63,12 @@ app.use(cors({
     if (isAllowed) {
       return callback(null, true);
     }
-    // Permissive fallback so requests are never aborted without CORS headers
-    return callback(null, true);
+    // Not allowlisted: respond WITHOUT CORS headers so the browser blocks the
+    // cross-origin request (was previously a permissive `callback(null, true)`
+    // that accepted every origin, defeating the allowlist). `false` here is
+    // not an error — the request still completes server-side, it just can't be
+    // read by a disallowed origin's page.
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -79,9 +83,12 @@ try {
   app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 } catch {}
 
+// Global safety limiter. 5000/15min was effectively no protection; 600/15min
+// per IP is generous for a human admin but stops scripted abuse. The tighter
+// login/2fa/refresh limiters live on those routes.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5000,
+  max: 600,
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },

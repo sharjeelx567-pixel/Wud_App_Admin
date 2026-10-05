@@ -243,6 +243,44 @@ export async function banUser(req: Request, res: Response): Promise<void> {
   }
 }
 
+// Lift a suspension early. A suspension otherwise self-heals only when
+// suspendedUntil passes (assertAccountInGoodStanding in the Cloud Functions),
+// so without this an admin can't reinstate a user ahead of time.
+export async function unsuspendUser(req: Request, res: Response): Promise<void> {
+  try {
+    const { uid } = req.params as { uid: string };
+    await db.collection('users').doc(uid).update({
+      isSuspended: false,
+      suspendedUntil: null,
+      banReason: null,
+      suspensionExpiredAt: serverTimestamp(),
+    });
+
+    await createAuditLog({
+      adminId: req.admin!.uid,
+      adminEmail: req.admin!.email,
+      action: 'UNSUSPEND_USER',
+      targetId: uid,
+      targetType: 'user',
+      details: {},
+      timestamp: new Date(),
+      ip: getClientIp(req),
+    });
+
+    await notifyUser(
+      uid,
+      'Suspension Lifted',
+      'Your account suspension has been lifted. Welcome back.',
+      'account_unbanned',
+      { critical: true }
+    );
+
+    res.json(successResponse(null, 'User suspension lifted'));
+  } catch (error) {
+    res.status(500).json(errorResponse('Failed to lift suspension', error));
+  }
+}
+
 export async function unbanUser(req: Request, res: Response): Promise<void> {
   try {
     const { uid } = req.params as { uid: string };
@@ -285,8 +323,15 @@ export async function suspendUser(req: Request, res: Response): Promise<void> {
   try {
     const { uid } = req.params as { uid: string };
     const { reason, days = 7 } = req.body;
+    // Validate the suspension length: a bad/huge/negative value would set a
+    // nonsense suspendedUntil (e.g. NaN → Invalid Date, or a 50-year ban).
+    const suspendDays = Number(days);
+    if (!Number.isFinite(suspendDays) || suspendDays < 1 || suspendDays > 365) {
+      res.status(400).json(errorResponse('Suspension length must be between 1 and 365 days.'));
+      return;
+    }
     const suspendedUntil = new Date();
-    suspendedUntil.setDate(suspendedUntil.getDate() + Number(days));
+    suspendedUntil.setDate(suspendedUntil.getDate() + suspendDays);
 
     await db.collection('users').doc(uid).update({
       isSuspended: true,
@@ -628,8 +673,13 @@ export async function grantPremium(req: Request, res: Response): Promise<void> {
   try {
     const { uid } = req.params as { uid: string };
     const { expiresInDays = 30 } = req.body;
+    const grantDays = Number(expiresInDays);
+    if (!Number.isFinite(grantDays) || grantDays < 1 || grantDays > 3650) {
+      res.status(400).json(errorResponse('Premium length must be between 1 and 3650 days.'));
+      return;
+    }
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + Number(expiresInDays));
+    expiresAt.setDate(expiresAt.getDate() + grantDays);
 
     await db.collection('users').doc(uid).update({
       isPremium: true,
@@ -649,7 +699,7 @@ export async function grantPremium(req: Request, res: Response): Promise<void> {
       action: 'GRANT_PREMIUM',
       targetId: uid,
       targetType: 'user',
-      details: { expiresInDays },
+      details: { expiresInDays: grantDays },
       timestamp: new Date(),
       ip: getClientIp(req),
     });
@@ -657,11 +707,11 @@ export async function grantPremium(req: Request, res: Response): Promise<void> {
     await notifyUser(
       uid,
       'Premium Activated',
-      `You have been granted ${expiresInDays} days of Premium access. Enjoy!`,
+      `You have been granted ${grantDays} days of Premium access. Enjoy!`,
       'premium_granted'
     );
 
-    res.json(successResponse(null, `Premium granted for ${expiresInDays} days`));
+    res.json(successResponse(null, `Premium granted for ${grantDays} days`));
   } catch (error) {
     res.status(500).json(errorResponse('Failed to grant premium', error));
   }

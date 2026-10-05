@@ -37,9 +37,56 @@ export async function getSettings(req: Request, res: Response): Promise<void> {
   }
 }
 
+// Only these keys may be written, each with an enforced type — raw
+// `set(req.body)` previously allowed arbitrary keys/types into app config.
+const BOOLEAN_KEYS = [
+  'maintenanceMode', 'allowRegistration', 'requireEmailVerification',
+  'matchingEnabled', 'chatEnabled',
+];
+const NUMBER_KEYS = ['premiumMonthlyPrice', 'premiumYearlyPrice', 'maxPhotosPerUser'];
+const FEATURE_FLAG_KEYS = ['videoVerification', 'socialLogin', 'dailyMatchesLimit'];
+
+function sanitizeSettings(body: any): { data: Record<string, any>; error?: string } {
+  const data: Record<string, any> = {};
+  for (const k of BOOLEAN_KEYS) {
+    if (k in body) {
+      if (typeof body[k] !== 'boolean') return { data, error: `${k} must be a boolean` };
+      data[k] = body[k];
+    }
+  }
+  for (const k of NUMBER_KEYS) {
+    if (k in body) {
+      const n = Number(body[k]);
+      if (!Number.isFinite(n) || n < 0) return { data, error: `${k} must be a non-negative number` };
+      data[k] = n;
+    }
+  }
+  if ('featureFlags' in body) {
+    const ff = body.featureFlags;
+    if (typeof ff !== 'object' || ff === null) return { data, error: 'featureFlags must be an object' };
+    const flags: Record<string, boolean> = {};
+    for (const k of FEATURE_FLAG_KEYS) {
+      if (k in ff) {
+        if (typeof ff[k] !== 'boolean') return { data, error: `featureFlags.${k} must be a boolean` };
+        flags[k] = ff[k];
+      }
+    }
+    data.featureFlags = flags;
+  }
+  return { data };
+}
+
 export async function updateSettings(req: Request, res: Response): Promise<void> {
   try {
-    const settingsData = req.body as Partial<AppSettings>;
+    const { data: settingsData, error } = sanitizeSettings(req.body || {});
+    if (error) {
+      res.status(400).json(errorResponse(error));
+      return;
+    }
+    if (Object.keys(settingsData).length === 0) {
+      res.status(400).json(errorResponse('No valid settings provided.'));
+      return;
+    }
 
     await db.collection('app_settings').doc(SETTINGS_DOC_ID).set(settingsData, { merge: true });
 

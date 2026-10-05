@@ -9,6 +9,48 @@ import { APP_NAME } from '../config/branding';
 const BACKUP_CODE_COUNT = 10;
 const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
+// ── TOTP-secret encryption at rest (AES-256-GCM) ──────────────────────────
+// The secret was stored in plaintext; if Firestore is ever read, every
+// authenticator seed would be exposed. When TWO_FACTOR_ENC_KEY is set (a
+// 32-byte value, hex/base64/utf8), new secrets are stored encrypted with the
+// marker prefix below. Decryption transparently returns a legacy plaintext
+// secret unchanged, so already-enrolled admins keep working with no re-enrol.
+// If the env key is unset, behaviour is identical to before (plaintext) — set
+// the key to activate encryption.
+const TWO_FA_ENC_PREFIX = 'enc:v1:';
+function twoFactorKey(): Buffer | null {
+  const raw = process.env.TWO_FACTOR_ENC_KEY;
+  if (!raw) return null;
+  let buf: Buffer;
+  if (/^[0-9a-fA-F]{64}$/.test(raw)) buf = Buffer.from(raw, 'hex');
+  else if (/^[A-Za-z0-9+/]{43}=$/.test(raw)) buf = Buffer.from(raw, 'base64');
+  else buf = crypto.createHash('sha256').update(raw).digest(); // derive 32B from any passphrase
+  return buf.length === 32 ? buf : crypto.createHash('sha256').update(buf).digest();
+}
+function encryptSecret(plain: string): string {
+  const key = twoFactorKey();
+  if (!key) return plain; // encryption not configured — unchanged behaviour
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const ct = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${TWO_FA_ENC_PREFIX}${iv.toString('hex')}:${tag.toString('hex')}:${ct.toString('hex')}`;
+}
+function decryptSecret(stored: string | null | undefined): string {
+  if (!stored) return '';
+  if (!stored.startsWith(TWO_FA_ENC_PREFIX)) return stored; // legacy plaintext
+  const key = twoFactorKey();
+  if (!key) return ''; // encrypted but no key available — cannot verify
+  try {
+    const [ivHex, tagHex, ctHex] = stored.slice(TWO_FA_ENC_PREFIX.length).split(':');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+    return Buffer.concat([decipher.update(Buffer.from(ctHex, 'hex')), decipher.final()]).toString('utf8');
+  } catch {
+    return '';
+  }
+}
+
 function base32Decode(base32: string): Buffer {
   const clean = base32.toUpperCase().replace(/=+$/, '');
   let bits = '';
@@ -108,7 +150,7 @@ export async function setupTwoFactor(req: Request, res: Response): Promise<void>
     const qrDataUrl = await QRCode.toDataURL(otpauth);
 
     await adminDoc.ref.update({
-      pendingTwoFactorSecret: secret,
+      pendingTwoFactorSecret: encryptSecret(secret),
       pendingTwoFactorCreatedAt: serverTimestamp(),
     });
 
@@ -141,7 +183,7 @@ export async function enableTwoFactor(req: Request, res: Response): Promise<void
       return;
     }
 
-    if (!checkTotp(code.replace(/\s/g, ''), data.pendingTwoFactorSecret)) {
+    if (!checkTotp(code.replace(/\s/g, ''), decryptSecret(data.pendingTwoFactorSecret))) {
       res.status(401).json(errorResponse('Invalid verification code'));
       return;
     }
@@ -182,7 +224,7 @@ export async function disableTwoFactor(req: Request, res: Response): Promise<voi
       res.status(400).json(errorResponse('Two-factor authentication is not enabled'));
       return;
     }
-    if (!code || !checkTotp(String(code).replace(/\s/g, ''), data.twoFactorSecret)) {
+    if (!code || !checkTotp(String(code).replace(/\s/g, ''), decryptSecret(data.twoFactorSecret))) {
       res.status(401).json(errorResponse('A valid current code is required to disable two-factor authentication'));
       return;
     }
@@ -228,7 +270,7 @@ export async function verifySecondFactor(
   const cleaned = String(submitted || '').replace(/\s/g, '');
   if (!cleaned) return false;
 
-  if (adminData.twoFactorSecret && checkTotp(cleaned, adminData.twoFactorSecret)) {
+  if (adminData.twoFactorSecret && checkTotp(cleaned, decryptSecret(adminData.twoFactorSecret))) {
     return true;
   }
 
