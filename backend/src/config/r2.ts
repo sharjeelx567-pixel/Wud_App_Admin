@@ -1,9 +1,10 @@
 // @ts-nocheck
 import { S3Client } from '@aws-sdk/client-s3';
 
-const DEFAULT_R2_ACCOUNT_ID = '19799f8d4440d7bfde10a40545bc775b';
-const DEFAULT_R2_ACCESS_KEY_ID = '6c11aa6239116b030e558b82a27a1921';
-const DEFAULT_R2_SECRET_ACCESS_KEY = '22b21b3bd21d7e39dc33ad3a5628d84b786db07ac5b2a0e5bb120ccc3394cac9';
+// R2 credentials come ONLY from the environment (.env locally, Vercel env in
+// production). Hardcoded fallback keys used to live here — they were committed
+// to source and must be treated as leaked: rotate them in Cloudflare.
+
 
 // Cloudflare R2 is the storage provider for uploaded files in this backend.
 // profile/chat/voice/video mirror the same bucket names the Cloud Functions
@@ -46,9 +47,9 @@ let _r2Client: S3Client | null = null;
 
 export function getR2Client(): S3Client | null {
   if (_r2Client) return _r2Client;
-  const accountId = process.env.R2_ACCOUNT_ID || DEFAULT_R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID || DEFAULT_R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || DEFAULT_R2_SECRET_ACCESS_KEY;
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
 
   if (!accountId || !accessKeyId || !secretAccessKey) {
     console.warn('[R2] Missing R2 credentials.');

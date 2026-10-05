@@ -19,8 +19,10 @@ export async function getTransactions(req: Request, res: Response): Promise<void
 
     const snapshot = await query.limit(Number(limit)).get();
 
-    // Transaction docs (see processXPayPayment in functions/src/index.ts)
-    // only store userId — enrich with display name/email for the admin table.
+    // Transaction docs (see processMockSubscriptionPayment in
+    // functions/src/premium/mockPayment.ts, or the future real XPay
+    // callback) only store userId — enrich with display name/email for the
+    // admin table.
     const transactions = await Promise.all(
       snapshot.docs.map(async (doc: any) => {
         const data = doc.data();

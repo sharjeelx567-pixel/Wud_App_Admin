@@ -45,9 +45,9 @@ export async function sendNotification(req: Request, res: Response): Promise<voi
     } else if (audience === 'verified') {
       query = query.where('isVerified', '==', true);
     } else if (audience === 'male') {
-      query = query.where('gender', '==', 'male');
+      query = query.where('gender', 'in', ['Male', 'male']);
     } else if (audience === 'female') {
-      query = query.where('gender', '==', 'female');
+      query = query.where('gender', 'in', ['Female', 'female']);
     } else if (audience === 'specific') {
       if (!targetUid) {
         res.status(400).json(errorResponse('targetUid is required for specific audience'));
