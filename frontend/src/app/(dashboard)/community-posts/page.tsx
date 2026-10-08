@@ -73,7 +73,7 @@ function PostComments({ postId }: { postId: string }) {
   const comments = data?.data?.data || [];
 
   const moderateMutation = useMutation({
-    mutationFn: ({ commentId, action }: { commentId: string; action: "hide" | "remove" }) =>
+    mutationFn: ({ commentId, action }: { commentId: string; action: "hide" | "remove" | "restore" }) =>
       api.patch(`/community-posts/${postId}/comments/${commentId}/${action}`, { reason: action === "hide" ? "Moderator review" : undefined }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["community-post-comments", postId] }),
   });

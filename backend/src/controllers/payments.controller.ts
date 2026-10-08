@@ -125,6 +125,10 @@ export async function getSubscriptionMetrics(req: Request, res: Response): Promi
       .get();
 
     txSnapshot.docs.forEach(doc => {
+      // Development/test payments (isTestPayment:true, written by the app's
+      // Test Payment method) are shown in the ledger but must NEVER inflate
+      // real revenue figures.
+      if (doc.data().isTestPayment === true) return;
       monthlyRevenue += doc.data().amount || 0;
     });
 

@@ -17,6 +17,9 @@ interface Transaction {
   type?: string;
   status: "completed" | "refunded" | "failed" | string;
   isRenewal?: boolean;
+  // Development/test payments (written by the app's Test Payment method).
+  // Shown in the ledger with a TEST badge but excluded from real revenue.
+  isTestPayment?: boolean;
   timestamp?: { _seconds: number; _nanoseconds: number } | string;
 }
 
@@ -74,7 +77,7 @@ export default function PremiumPage() {
   const transactions = txData?.data || [];
 
   const totalRevenue = transactions
-    .filter((t) => t.status === "completed")
+    .filter((t) => t.status === "completed" && !t.isTestPayment)
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
   const refundMutation = useMutation({
@@ -177,7 +180,16 @@ export default function PremiumPage() {
                     </td>
                     <td className="px-6 py-4 capitalize">{tx.planId || "—"}</td>
                     <td className="px-6 py-4 font-bold text-slate-900">PKR {(tx.amount || 0).toLocaleString()}</td>
-                    <td className="px-6 py-4 capitalize text-slate-500">{tx.paymentMethod || "—"}</td>
+                    <td className="px-6 py-4 capitalize text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        <span>{tx.paymentMethod || "—"}</span>
+                        {tx.isTestPayment && (
+                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded text-[9px] font-bold uppercase tracking-wide not-italic">
+                            Test
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-slate-500 font-mono text-[11px]">{formatDate(tx.timestamp)}</td>
                     <td className="px-6 py-4">{getStatusBadge(tx.status)}</td>
                     <td className="px-6 py-4 text-right">

@@ -30,7 +30,12 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       db.collection('transactions').where('status', '==', 'completed').get(),
     ]);
 
-    const totalRevenue = completedTxSnap.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0);
+    // Development/test payments (isTestPayment:true) are excluded from REAL
+    // revenue — they still appear individually in the transactions ledger.
+    const totalRevenue = completedTxSnap.docs.reduce(
+      (sum, doc) => sum + (doc.data().isTestPayment === true ? 0 : (doc.data().amount || 0)),
+      0,
+    );
 
     const stats: DashboardStats = {
       totalUsers: totalSnap.data().count,
