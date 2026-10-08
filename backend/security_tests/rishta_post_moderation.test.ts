@@ -173,6 +173,41 @@ async function main() {
     assert(doc.data()?.status === 'active', 'post status is restored to active');
   }
 
+  console.log('\n=== TEST 9: a pending post is approved to active by a posts.manage admin (with audit log); view-only is rejected ===');
+  {
+    const pendingRef = db.collection('rishta_posts').doc(`pending_${stamp}`);
+    await pendingRef.set({
+      id: pendingRef.id, authorUid, profileUid: authorUid,
+      displayName: 'Pending Author', age: 29, gender: 'Female', city: 'Karachi',
+      status: 'pending', likeCount: 0, reportCount: 0,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const denied = await fetch(`${base}/posts/${pendingRef.id}/approve`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${viewOnlyToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    assert(denied.status === 403, `posts.view-only admin cannot approve (got ${denied.status})`);
+
+    const beforeAuditSnap = await db.collection('admin_audit_logs').where('targetId', '==', pendingRef.id).where('targetType', '==', 'post').get();
+    const beforeCount = beforeAuditSnap.size;
+
+    const res = await fetch(`${base}/posts/${pendingRef.id}/approve`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${moderatorToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    assert(res.status === 200, `approve succeeds for a posts.manage admin (got ${res.status})`);
+
+    const doc = await pendingRef.get();
+    assert(doc.data()?.status === 'active', `pending post is now active after approval (got ${doc.data()?.status})`);
+    assert(doc.data()?.moderatedBy === `rpmod_${stamp}`, 'moderatedBy is set to the approving admin');
+
+    const afterAuditSnap = await db.collection('admin_audit_logs').where('targetId', '==', pendingRef.id).where('targetType', '==', 'post').get();
+    assert(afterAuditSnap.size === beforeCount + 1, `exactly one approval audit log entry was created (before=${beforeCount}, after=${afterAuditSnap.size})`);
+  }
+
   server.close();
 
   console.log(`\n=== RESULT: ${passed} passed, ${failed} failed ===`);

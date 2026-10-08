@@ -105,7 +105,8 @@ async function moderatePost(req: Request, res: Response, status: 'active' | 'hid
       ip: getClientIp(req) as string,
     });
 
-    res.json(successResponse(null, `Post ${status === 'active' ? 'restored' : status}`));
+    const verb = action === 'APPROVE_POST' ? 'approved' : status === 'active' ? 'restored' : status;
+    res.json(successResponse(null, `Post ${verb}`));
   } catch (error) {
     res.status(500).json(errorResponse('Failed to moderate post', error));
   }
@@ -114,3 +115,7 @@ async function moderatePost(req: Request, res: Response, status: 'active' | 'hid
 export const hidePost = (req: Request, res: Response) => moderatePost(req, res, 'hidden', 'HIDE_POST');
 export const unhidePost = (req: Request, res: Response) => moderatePost(req, res, 'active', 'UNHIDE_POST');
 export const removePost = (req: Request, res: Response) => moderatePost(req, res, 'removed', 'REMOVE_POST');
+// Approve a pending Rishta post → makes it 'active' (live in the feed).
+// Rishta posts are created as 'pending' and stay hidden from everyone but
+// their author until an admin approves them here.
+export const approvePost = (req: Request, res: Response) => moderatePost(req, res, 'active', 'APPROVE_POST');

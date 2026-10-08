@@ -7,6 +7,7 @@ import api from "../../../services/api";
 import UserAvatar from "../../../components/common/UserAvatar";
 import {
   ShieldCheck,
+  CheckCircle2,
   EyeOff,
   Eye,
   Trash2,
@@ -24,7 +25,7 @@ interface AdminPost {
   city: string;
   photoUrl: string | null;
   aboutMe: string;
-  status: "active" | "hidden" | "removed";
+  status: "pending" | "active" | "hidden" | "removed";
   moderationReason: string | null;
   likeCount: number;
   reportCount: number;
@@ -47,11 +48,11 @@ export default function PostsPage() {
 
   const posts = data?.data?.data || [];
 
-  const moderate = (id: string, action: "hide" | "unhide" | "remove") =>
+  const moderate = (id: string, action: "approve" | "hide" | "unhide" | "remove") =>
     api.patch(`/posts/${id}/${action}`, { reason: action === "hide" ? "Moderator review" : undefined });
 
   const moderateMutation = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: "hide" | "unhide" | "remove" }) => moderate(id, action),
+    mutationFn: ({ id, action }: { id: string; action: "approve" | "hide" | "unhide" | "remove" }) => moderate(id, action),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts-list"] });
     },
@@ -64,6 +65,9 @@ export default function PostsPage() {
   };
 
   const statusBadge = (status: string) => {
+    if (status === "pending") {
+      return <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-bold">Pending Approval</span>;
+    }
     if (status === "hidden") {
       return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">Hidden</span>;
     }
@@ -91,6 +95,7 @@ export default function PostsPage() {
           className="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
         >
           <option value="all">All Posts</option>
+          <option value="pending">Pending Approval</option>
           <option value="active">Active</option>
           <option value="hidden">Hidden</option>
           <option value="removed">Removed</option>
@@ -154,7 +159,16 @@ export default function PostsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {post.status !== "hidden" && post.status !== "removed" && (
+                    {post.status === "pending" && (
+                      <button
+                        onClick={() => moderateMutation.mutate({ id: post.id, action: "approve" })}
+                        disabled={moderateMutation.isPending}
+                        className="py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                      </button>
+                    )}
+                    {post.status === "active" && (
                       <button
                         onClick={() => moderateMutation.mutate({ id: post.id, action: "hide" })}
                         disabled={moderateMutation.isPending}
@@ -163,7 +177,7 @@ export default function PostsPage() {
                         <EyeOff className="w-3.5 h-3.5" /> Hide
                       </button>
                     )}
-                    {post.status !== "active" && (
+                    {(post.status === "hidden" || post.status === "removed") && (
                       <button
                         onClick={() => moderateMutation.mutate({ id: post.id, action: "unhide" })}
                         disabled={moderateMutation.isPending}
@@ -178,7 +192,7 @@ export default function PostsPage() {
                         disabled={moderateMutation.isPending}
                         className="py-2 px-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Remove
+                        <Trash2 className="w-3.5 h-3.5" /> {post.status === "pending" ? "Reject" : "Remove"}
                       </button>
                     )}
                   </div>
