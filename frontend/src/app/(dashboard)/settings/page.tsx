@@ -30,9 +30,12 @@ export default function SettingsPage() {
     },
   });
 
-  // Mutate configs
+  // Mutate configs. `prices` is an admin-editable PKR map not (yet) in the
+  // AppSettings type, so it's allowed alongside the known settings keys.
   const updateMutation = useMutation({
-    mutationFn: async (payload: Partial<AppSettings>) => {
+    mutationFn: async (
+      payload: Partial<AppSettings> & { prices?: Record<string, number> },
+    ) => {
       const response = await api.patch("/settings", payload);
       return response.data;
     },
