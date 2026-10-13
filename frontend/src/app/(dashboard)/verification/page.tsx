@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../../services/api";
 import UserAvatar from "../../../components/common/UserAvatar";
+import DocReviewTab from "./DocReviewTab";
 import { APP_NAME } from "../../../config/branding";
 import {
   Check,
@@ -152,7 +153,9 @@ function SecureCnicImage({
 
 export default function VerificationPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"identity" | "full" | "voice">("identity");
+  const [activeTab, setActiveTab] = useState<
+    "identity" | "full" | "voice" | "education" | "single" | "human"
+  >("identity");
   const [selectedReq, setSelectedReq] = useState<VerificationRequest | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -422,6 +425,33 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
               {voiceQueue.filter((v: any) => v.voiceVerificationStatus === "pending").length}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => setActiveTab("education")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "education" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <Shield className="w-4 h-4 text-indigo-600" />
+          Education
+        </button>
+        <button
+          onClick={() => setActiveTab("single")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "single" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-pink-600" />
+          Confirmed Single
+        </button>
+        <button
+          onClick={() => setActiveTab("human")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "human" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <Video className="w-4 h-4 text-teal-600" />
+          Human Video
         </button>
 
       </div>
@@ -1029,6 +1059,37 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === "education" && (
+        <DocReviewTab
+          title="Education"
+          queueKey="education-queue"
+          queuePath="/verification/education/queue"
+          approvePath={(uid) => `/verification/${uid}/approve-education`}
+          rejectPath={(uid) => `/verification/${uid}/reject-education`}
+          kind="doc"
+        />
+      )}
+      {activeTab === "single" && (
+        <DocReviewTab
+          title="Confirmed Single"
+          queueKey="single-queue"
+          queuePath="/verification/single/queue"
+          approvePath={(uid) => `/verification/${uid}/approve-single`}
+          rejectPath={(uid) => `/verification/${uid}/reject-single`}
+          kind="doc"
+        />
+      )}
+      {activeTab === "human" && (
+        <DocReviewTab
+          title="Human Video"
+          queueKey="human-queue"
+          queuePath="/verification/human/queue"
+          approvePath={(uid) => `/verification/${uid}/approve-human`}
+          rejectPath={(uid) => `/verification/${uid}/reject-human`}
+          kind="human"
+        />
       )}
 
       {/* Voice Rejection Modal */}

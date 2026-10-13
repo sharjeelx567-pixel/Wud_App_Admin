@@ -46,6 +46,15 @@ const BOOLEAN_KEYS = [
 const NUMBER_KEYS = ['premiumMonthlyPrice', 'premiumYearlyPrice', 'maxPhotosPerUser'];
 const FEATURE_FLAG_KEYS = ['videoVerification', 'socialLogin', 'dailyMatchesLimit'];
 
+// Admin-editable prices (PKR). Written into app_settings/config.prices and
+// read by the Cloud Functions payment engine (resolvePrice) + the Flutter app
+// for display. Keys MUST match the plan ids / item types the engine charges by.
+const PRICE_KEYS = [
+  'premium_monthly', 'gold_family', 'family_room', 'verification',
+  'profile_boost', 'rishta_boost', 'biodata_pdf', 'chat_archive',
+  'chat_renewal', 'confirmed_single', 'human_video',
+];
+
 function sanitizeSettings(body: any): { data: Record<string, any>; error?: string } {
   const data: Record<string, any> = {};
   for (const k of BOOLEAN_KEYS) {
@@ -72,6 +81,19 @@ function sanitizeSettings(body: any): { data: Record<string, any>; error?: strin
       }
     }
     data.featureFlags = flags;
+  }
+  if ('prices' in body) {
+    const pr = body.prices;
+    if (typeof pr !== 'object' || pr === null) return { data, error: 'prices must be an object' };
+    const prices: Record<string, number> = {};
+    for (const k of PRICE_KEYS) {
+      if (k in pr) {
+        const n = Number(pr[k]);
+        if (!Number.isFinite(n) || n < 0) return { data, error: `prices.${k} must be a non-negative number` };
+        prices[k] = n;
+      }
+    }
+    data.prices = prices;
   }
   return { data };
 }

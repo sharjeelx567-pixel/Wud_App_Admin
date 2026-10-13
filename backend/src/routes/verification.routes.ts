@@ -14,6 +14,14 @@ import {
   reviewVerification,
   scheduleHumanVerification,
   approveHumanVerification,
+  rejectHumanVerification,
+  getHumanVerificationQueue,
+  getEducationQueue,
+  approveEducation,
+  rejectEducation,
+  getSingleQueue,
+  approveSingle,
+  rejectSingle,
   getVoiceVerificationQueue,
   approveVoiceVerification,
   rejectVoiceVerification,
@@ -49,6 +57,16 @@ router.patch('/:id/request-new', requirePermission('verification.reject'), reque
 router.patch('/:id/review', requirePermission('verification.view'), reviewVerification);
 router.post('/:id/schedule-human', requirePermission('verification.approve'), scheduleHumanVerification);
 router.patch('/:id/approve-human', requirePermission('verification.approve'), approveHumanVerification);
+router.patch('/:id/reject-human', requirePermission('verification.reject'), rejectHumanVerification);
+
+// ── Education (VER-06), Confirmed-Single (VER-07), Human Video (VER-08) queues
+router.get('/human/queue', requirePermission('verification.view'), getHumanVerificationQueue);
+router.get('/education/queue', requirePermission('verification.view'), getEducationQueue);
+router.patch('/:id/approve-education', requirePermission('verification.approve'), approveEducation);
+router.patch('/:id/reject-education', requirePermission('verification.reject'), rejectEducation);
+router.get('/single/queue', requirePermission('verification.view'), getSingleQueue);
+router.patch('/:id/approve-single', requirePermission('verification.approve'), approveSingle);
+router.patch('/:id/reject-single', requirePermission('verification.reject'), rejectSingle);
 
 // ── Voice & Gender Verification Routes (Admin-Only) ────────────────────────
 router.get('/voice-queue', requirePermission('verification.view'), getVoiceVerificationQueue);

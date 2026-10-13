@@ -508,11 +508,94 @@ export async function requestNewVerification(req: Request, res: Response): Promi
 export async function reviewVerification(req: Request, res: Response): Promise<void> {
   res.json(successResponse(null, 'Deprecated'));
 }
-export async function scheduleHumanVerification(req: Request, res: Response): Promise<void> {
-  return scheduleMeeting(req, res);
+// ── Human Video Verification (VER-08) ────────────────────────────────────────
+export async function getHumanVerificationQueue(_req: Request, res: Response): Promise<void> {
+  try {
+    const snapshot = await db.collection('human_verification_bookings')
+      .where('status', '==', 'scheduled')
+      .limit(100)
+      .get();
+    const queue = await Promise.all(snapshot.docs.map(async (doc) => {
+      const data = doc.data();
+      const userDoc = await db.collection('users').doc(data.userId).get();
+      const user = userDoc.data() || {};
+      return {
+        bookingId: doc.id,
+        uid: data.userId,
+        date: data.date || '',
+        timeSlot: data.timeSlot || '',
+        displayName: user.displayName || '',
+        email: user.email || '',
+        gender: user.gender || '',
+        city: user.currentCity || user.permanentCity || '',
+        profileImage: user.profileImage || null,
+        createdAt: data.createdAt || null,
+      };
+    }));
+    queue.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    res.json(successResponse(queue));
+  } catch (error) {
+    console.error('[Verification] getHumanVerificationQueue error:', error);
+    res.status(500).json(errorResponse('Failed to fetch human verification queue', error));
+  }
 }
+
 export async function approveHumanVerification(req: Request, res: Response): Promise<void> {
-  return approveFullVerification(req, res);
+  try {
+    const { id } = req.params; // user uid
+    // 7-day search boost — floats the profile in discovery (see getDiscoveryFeed).
+    const boostUntil = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+    const batch = db.batch();
+    batch.update(db.collection('users').doc(id), {
+      humanVerified: true,
+      humanVerificationStatus: 'approved',
+      isVerified: true,
+      profileBoostExpiresAt: boostUntil,
+    });
+    batch.set(db.collection('admin_audit_logs').doc(), {
+      action: 'human_verification_approved',
+      userId: id,
+      adminId: (req as any).admin?.uid || 'system',
+      timestamp: FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    // Mark the scheduled booking done (in-memory filter avoids a composite index).
+    const bk = await db.collection('human_verification_bookings').where('userId', '==', id).get();
+    const scheduled = bk.docs.find((d) => d.data().status === 'scheduled');
+    if (scheduled) await scheduled.ref.update({ status: 'approved', updatedAt: FieldValue.serverTimestamp() });
+    await sendPush(id, 'Human Verified! 🎥✅',
+      'Your video verification is complete. You now have the Human Verified badge and a 7-day search boost.',
+      { type: 'verification' });
+    res.json(successResponse(null, 'Human verification approved'));
+  } catch (error) {
+    console.error('[Verification] approveHumanVerification error:', error);
+    res.status(500).json(errorResponse('Failed to approve human verification', error));
+  }
+}
+
+export async function rejectHumanVerification(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    await db.collection('users').doc(id).update({
+      humanVerified: false,
+      humanVerificationStatus: 'rejected',
+    });
+    const bk = await db.collection('human_verification_bookings').where('userId', '==', id).get();
+    const scheduled = bk.docs.find((d) => d.data().status === 'scheduled');
+    if (scheduled) await scheduled.ref.update({ status: 'rejected', rejectionReason: reason || '', updatedAt: FieldValue.serverTimestamp() });
+    await sendPush(id, 'Video Verification Update',
+      `Your video verification could not be approved${reason ? ': ' + reason : ''}. You can book another slot.`,
+      { type: 'verification' });
+    res.json(successResponse(null, 'Human verification rejected'));
+  } catch (error) {
+    console.error('[Verification] rejectHumanVerification error:', error);
+    res.status(500).json(errorResponse('Failed to reject human verification', error));
+  }
+}
+
+export async function scheduleHumanVerification(_req: Request, res: Response): Promise<void> {
+  res.json(successResponse(null, 'Human video booking is self-service in the app.'));
 }
 
 
@@ -660,5 +743,130 @@ export async function rejectVoiceVerification(req: Request, res: Response): Prom
   } catch (error) {
     console.error('[Verification] rejectVoiceVerification error:', error);
     res.status(500).json(errorResponse('Failed to reject voice verification', error));
+  }
+}
+
+// ── Document-review queue helper (verification_center) ───────────────────────
+// Education (VER-06) and Confirmed-Single (VER-07) both live in
+// verification_center/{uid} with a <statusField> + <docField>. These three
+// helpers keep the two sets of endpoints identical.
+async function _docQueue(statusField: string, docField: string, res: Response) {
+  const snapshot = await db.collection('verification_center')
+    .where(statusField, '==', 'pending')
+    .limit(100)
+    .get();
+  const queue = await Promise.all(snapshot.docs.map(async (doc) => {
+    const data = doc.data();
+    const userDoc = await db.collection('users').doc(doc.id).get();
+    const user = userDoc.data() || {};
+    return {
+      uid: doc.id,
+      displayName: user.displayName || '',
+      email: user.email || '',
+      gender: user.gender || '',
+      city: user.currentCity || user.permanentCity || '',
+      profileImage: user.profileImage || null,
+      documentUrl: data[docField] || null,
+      status: data[statusField],
+      submittedAt: data.submittedAt || null,
+    };
+  }));
+  queue.sort((a, b) => (b.submittedAt?.toMillis?.() || 0) - (a.submittedAt?.toMillis?.() || 0));
+  res.json(successResponse(queue));
+}
+
+async function _docApprove(
+  req: Request, res: Response,
+  statusField: string, userBadgeField: string, action: string, pushTitle: string, pushBody: string,
+) {
+  const { id } = req.params; // user uid
+  const batch = db.batch();
+  batch.set(db.collection('verification_center').doc(id),
+    { [statusField]: 'approved', updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  batch.update(db.collection('users').doc(id), { [userBadgeField]: true });
+  batch.set(db.collection('admin_audit_logs').doc(), {
+    action, userId: id, adminId: (req as any).admin?.uid || 'system',
+    timestamp: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+  await sendPush(id, pushTitle, pushBody, { type: 'verification' });
+  res.json(successResponse(null, `${action} done`));
+}
+
+async function _docReject(
+  req: Request, res: Response,
+  statusField: string, userBadgeField: string, action: string,
+) {
+  const { id } = req.params;
+  const { reason } = req.body;
+  const batch = db.batch();
+  batch.set(db.collection('verification_center').doc(id),
+    { [statusField]: 'rejected', [`${statusField}Reason`]: reason || '', updatedAt: FieldValue.serverTimestamp() },
+    { merge: true });
+  batch.update(db.collection('users').doc(id), { [userBadgeField]: false });
+  batch.set(db.collection('admin_audit_logs').doc(), {
+    action, userId: id, reason: reason || '', adminId: (req as any).admin?.uid || 'system',
+    timestamp: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+  await sendPush(id, 'Verification Update',
+    `Your submission could not be approved${reason ? ': ' + reason : ''}. You can upload again.`,
+    { type: 'verification' });
+  res.json(successResponse(null, `${action} done`));
+}
+
+// ── Education Verification (VER-06) ──────────────────────────────────────────
+export async function getEducationQueue(_req: Request, res: Response): Promise<void> {
+  try {
+    await _docQueue('educationStatus', 'educationDegreeUrl', res);
+  } catch (error) {
+    console.error('[Verification] getEducationQueue error:', error);
+    res.status(500).json(errorResponse('Failed to fetch education queue', error));
+  }
+}
+export async function approveEducation(req: Request, res: Response): Promise<void> {
+  try {
+    await _docApprove(req, res, 'educationStatus', 'educationVerified',
+      'education_verification_approved', 'Education Verified ✅',
+      'Your education has been verified — your Education Verified badge is now active.');
+  } catch (error) {
+    console.error('[Verification] approveEducation error:', error);
+    res.status(500).json(errorResponse('Failed to approve education', error));
+  }
+}
+export async function rejectEducation(req: Request, res: Response): Promise<void> {
+  try {
+    await _docReject(req, res, 'educationStatus', 'educationVerified', 'education_verification_rejected');
+  } catch (error) {
+    console.error('[Verification] rejectEducation error:', error);
+    res.status(500).json(errorResponse('Failed to reject education', error));
+  }
+}
+
+// ── Confirmed Single (VER-07) ────────────────────────────────────────────────
+export async function getSingleQueue(_req: Request, res: Response): Promise<void> {
+  try {
+    await _docQueue('singleStatus', 'confirmedSingleUrl', res);
+  } catch (error) {
+    console.error('[Verification] getSingleQueue error:', error);
+    res.status(500).json(errorResponse('Failed to fetch confirmed-single queue', error));
+  }
+}
+export async function approveSingle(req: Request, res: Response): Promise<void> {
+  try {
+    await _docApprove(req, res, 'singleStatus', 'confirmedSingle',
+      'confirmed_single_approved', 'Confirmed Single ✅',
+      'Your status has been verified — your Confirmed Single badge is now active.');
+  } catch (error) {
+    console.error('[Verification] approveSingle error:', error);
+    res.status(500).json(errorResponse('Failed to approve confirmed-single', error));
+  }
+}
+export async function rejectSingle(req: Request, res: Response): Promise<void> {
+  try {
+    await _docReject(req, res, 'singleStatus', 'confirmedSingle', 'confirmed_single_rejected');
+  } catch (error) {
+    console.error('[Verification] rejectSingle error:', error);
+    res.status(500).json(errorResponse('Failed to reject confirmed-single', error));
   }
 }
