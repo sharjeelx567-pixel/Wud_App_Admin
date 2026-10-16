@@ -370,7 +370,7 @@ export async function confirmFullPayment(req: Request, res: Response): Promise<v
       paymentStatus: 'confirmed',
       updatedAt: FieldValue.serverTimestamp(),
     });
-    await sendPush(userId, 'ðŸ’³ Payment Confirmed', 'Your payment of PKR 200 has been confirmed. Please submit your availability for the meeting.');
+    await sendPush(userId, '💳 Payment Confirmed', 'Your payment of PKR 200 has been confirmed. Please submit your availability for the meeting.');
     res.json(successResponse(null, 'Payment confirmed'));
   } catch (error) {
     res.status(500).json(errorResponse('Failed to confirm payment', error));
@@ -406,7 +406,7 @@ export async function scheduleMeeting(req: Request, res: Response): Promise<void
 
     await sendPush(
       userId,
-      'ðŸ“… Meeting Scheduled!',
+      '📅 Meeting Scheduled!',
       `Your Full Verification meeting has been scheduled for ${meetingDate} at ${meetingTime}.`,
       { type: 'verification_meeting', meetingDate, meetingTime, meetingLink }
     );
@@ -445,7 +445,7 @@ export async function approveFullVerification(req: Request, res: Response): Prom
 
     await sendPush(
       userId,
-      'ðŸ… Congratulations! Fully Verified!',
+      '🏅 Congratulations! Fully Verified!',
       'Your Full Verification has been approved. You now have the Fully Verified badge on your profile!',
       { type: 'verification', verificationStatus: 'approved' }
     );
