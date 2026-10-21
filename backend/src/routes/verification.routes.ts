@@ -15,6 +15,7 @@ import {
   scheduleHumanVerification,
   approveHumanVerification,
   rejectHumanVerification,
+  setHumanMeetingLink,
   getHumanVerificationQueue,
   getEducationQueue,
   approveEducation,
@@ -67,6 +68,7 @@ router.patch('/:id/reject-human', requirePermission('verification.reject'), reje
 
 // ── Education (VER-06), Confirmed-Single (VER-07), Human Video (VER-08) queues
 router.get('/human/queue', requirePermission('verification.view'), getHumanVerificationQueue);
+router.patch('/:id/human-meeting-link', requirePermission('verification.approve'), setHumanMeetingLink);
 router.get('/education/queue', requirePermission('verification.view'), getEducationQueue);
 router.patch('/:id/approve-education', requirePermission('verification.approve'), approveEducation);
 router.patch('/:id/reject-education', requirePermission('verification.reject'), rejectEducation);

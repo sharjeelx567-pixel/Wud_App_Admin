@@ -1169,6 +1169,7 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
           queuePath="/verification/human/queue"
           approvePath={(uid) => `/verification/${uid}/approve-human`}
           rejectPath={(uid) => `/verification/${uid}/reject-human`}
+          meetingLinkPath={(uid) => `/verification/${uid}/human-meeting-link`}
           kind="human"
         />
       )}

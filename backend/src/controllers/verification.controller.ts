@@ -529,6 +529,7 @@ export async function getHumanVerificationQueue(_req: Request, res: Response): P
         gender: user.gender || '',
         city: user.currentCity || user.permanentCity || '',
         profileImage: user.profileImage || null,
+        meetingLink: data.meetingLink || user.humanVerificationMeetingLink || null,
         createdAt: data.createdAt || null,
       };
     }));
@@ -596,6 +597,43 @@ export async function rejectHumanVerification(req: Request, res: Response): Prom
 
 export async function scheduleHumanVerification(_req: Request, res: Response): Promise<void> {
   res.json(successResponse(null, 'Human video booking is self-service in the app.'));
+}
+
+// Staff sets the Google Meet / Zoom link for a booked human-video slot. The
+// user books the slot themselves (bookHumanVerification), but there was no way
+// to hand them the actual call link — this stores it on both the booking doc
+// (so it reloads in the admin queue) and the user doc (which the app's Video
+// Verification screen reads live) and pushes the user a notification.
+export async function setHumanMeetingLink(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params; // user uid
+    const meetingLink = (req.body?.meetingLink || '').trim();
+    if (!/^https?:\/\//i.test(meetingLink)) {
+      res.status(400).json(errorResponse('A valid meeting link (https://…) is required.'));
+      return;
+    }
+    const bk = await db.collection('human_verification_bookings').where('userId', '==', id).get();
+    const scheduled = bk.docs.find((d) => d.data().status === 'scheduled');
+    const batch = db.batch();
+    batch.update(db.collection('users').doc(id), { humanVerificationMeetingLink: meetingLink });
+    if (scheduled) {
+      batch.update(scheduled.ref, { meetingLink, updatedAt: FieldValue.serverTimestamp() });
+    }
+    batch.set(db.collection('admin_audit_logs').doc(), {
+      action: 'human_verification_meeting_link_sent',
+      userId: id,
+      adminId: (req as any).admin?.uid || 'system',
+      timestamp: FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    await sendPush(id, 'Video Call Link Ready 🎥',
+      'Your video verification meeting link is ready — open Video Verification to join at your scheduled time.',
+      { type: 'verification' });
+    res.json(successResponse(null, 'Meeting link sent to the user'));
+  } catch (error) {
+    console.error('[Verification] setHumanMeetingLink error:', error);
+    res.status(500).json(errorResponse('Failed to send meeting link', error));
+  }
 }
 
 
