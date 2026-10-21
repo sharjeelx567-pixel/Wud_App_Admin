@@ -1,5 +1,6 @@
 ﻿/** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -36,17 +37,19 @@ module.exports = {
           light: "#FBBF24",
           dark: "#D97706",
         },
+        // Semantic surfaces/text are CSS-variable driven so they flip in dark
+        // mode (see :root / html.dark in globals.css).
         bg: {
-          DEFAULT: "#F8FAFC",
-          surface: "#FFFFFF",
-          card: "#FFFFFF",
-          border: "#E2E8F0",
-          subtle: "#F1F5F9",
+          DEFAULT: "var(--bg)",
+          surface: "var(--surface)",
+          card: "var(--card)",
+          border: "var(--border)",
+          subtle: "var(--surface-2)",
         },
         text: {
-          primary: "#0F172A",
-          secondary: "#64748B",
-          muted: "#94A3B8",
+          primary: "var(--text-primary)",
+          secondary: "var(--text-secondary)",
+          muted: "var(--text-muted)",
         },
         success: {
           DEFAULT: "#10B981",

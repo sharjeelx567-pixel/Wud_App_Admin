@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ShieldCheck, Bell, Sparkles, Menu } from "lucide-react";
+import { ShieldCheck, Bell, Menu } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import api from "../../services/api";
 import { APP_NAME } from "../../config/branding";
+import ThemeToggle from "./ThemeToggle";
 
 export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
@@ -95,6 +96,9 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
         <span className="text-xs text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/70 hidden sm:inline-block">
           {getTodayDate()}
         </span>
+
+        {/* Light / dark theme toggle */}
+        <ThemeToggle />
 
         {/* Notifications Bell */}
         <button

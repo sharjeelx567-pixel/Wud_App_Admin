@@ -27,7 +27,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
+      <head>
+        {/* No-flash theme: apply the saved choice before first paint so there
+            is no light→dark flicker. Defaults to light when nothing is saved. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('wud-theme');if(t==='dark'){document.documentElement.classList.add('dark');}}catch(e){}})();",
+          }}
+        />
+      </head>
       <body
         className={`${sansFont.variable} ${displayFont.variable} antialiased h-full font-sans bg-bg text-text-primary`}
         suppressHydrationWarning

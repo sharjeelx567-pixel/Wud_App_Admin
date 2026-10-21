@@ -186,10 +186,14 @@ export default function Sidebar({ pendingCounts, mobileOpen = false, onClose }: 
 
                 return (
                   <Link key={item.href} href={item.href} onClick={() => onClose?.()} className="relative block group">
+                    {/* Left accent bar on the active route */}
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-gradient-to-b from-indigo-500 to-violet-500" />
+                    )}
                     <span
                       className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                         isActive
-                          ? "bg-indigo-50/90 text-indigo-600 font-bold shadow-xs"
+                          ? "bg-gradient-to-r from-indigo-500/[0.12] to-indigo-500/0 text-indigo-600 font-bold ring-1 ring-indigo-500/15"
                           : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                       }`}
                     >

@@ -48,64 +48,58 @@ export default function StatCard({
 }: StatCardProps) {
   const isNumeric = typeof value === "number";
 
-  const getThemeClasses = () => {
+  const getTheme = () => {
     switch (colorTheme) {
       case "secondary":
-        return {
-          iconBg: "bg-pink-50 text-pink-600",
-          ring: "hover:border-pink-300",
-        };
+        return { grad: "from-pink-500 to-rose-500", shadow: "shadow-pink-500/30", glow: "rgba(236,72,153,0.20)" };
       case "accent":
       case "warning":
-        return {
-          iconBg: "bg-amber-50 text-amber-600",
-          ring: "hover:border-amber-300",
-        };
+        return { grad: "from-amber-400 to-orange-500", shadow: "shadow-amber-500/30", glow: "rgba(245,158,11,0.20)" };
       case "success":
-        return {
-          iconBg: "bg-emerald-50 text-emerald-600",
-          ring: "hover:border-emerald-300",
-        };
+        return { grad: "from-emerald-500 to-teal-500", shadow: "shadow-emerald-500/30", glow: "rgba(16,185,129,0.20)" };
       default:
-        return {
-          iconBg: "bg-indigo-50 text-indigo-600",
-          ring: "hover:border-indigo-300",
-        };
+        return { grad: "from-indigo-500 to-violet-500", shadow: "shadow-indigo-500/30", glow: "rgba(99,102,241,0.20)" };
     }
   };
 
-  const theme = getThemeClasses();
+  const theme = getTheme();
 
   return (
-    <div
-      className={`bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between ${theme.ring}`}
-    >
-      <div className="flex items-start justify-between">
-        <div>
+    <div className="group relative overflow-hidden bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between">
+      {/* Soft corner glow in the card's accent colour */}
+      <div
+        className="pointer-events-none absolute -top-12 -right-12 w-36 h-36 rounded-full blur-2xl opacity-70 transition-opacity duration-300 group-hover:opacity-100"
+        style={{ background: `radial-gradient(circle, ${theme.glow}, transparent 70%)` }}
+      />
+
+      <div className="relative flex items-start justify-between">
+        <div className="min-w-0">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
             {title}
           </span>
-          <h3 className="text-2xl font-bold font-display text-slate-900 mt-1 tracking-tight">
+          <h3 className="text-2xl font-bold font-display text-slate-900 mt-1.5 tracking-tight">
             {isNumeric ? <AnimatedCounter endValue={value as number} /> : value}
           </h3>
         </div>
 
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${theme.iconBg}`}>
+        <div
+          className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white bg-gradient-to-br shadow-lg ${theme.grad} ${theme.shadow} transition-transform duration-300 group-hover:scale-105`}
+        >
           <Icon className="w-5 h-5" />
         </div>
       </div>
 
       {(description || trend) && (
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
+        <div className="relative flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
           {trend && (
             <span
-              className={`font-semibold px-1.5 py-0.5 rounded-md text-[10px] ${
+              className={`font-bold px-1.5 py-0.5 rounded-md text-[10px] inline-flex items-center gap-0.5 ${
                 trend.type === "up"
                   ? "text-emerald-700 bg-emerald-50"
                   : "text-rose-700 bg-rose-50"
               }`}
             >
-              {trend.value}
+              {trend.type === "up" ? "▲" : "▼"} {trend.value}
             </span>
           )}
           {description && (
