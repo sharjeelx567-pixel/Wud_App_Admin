@@ -14,14 +14,19 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
     const REPORT_OPEN = ['open', 'Open', 'pending', 'Pending'];
     const [
       totalSnap, premiumSnap, pendingPhotosSnap,
-      pendingVerifSnap, pendingReportsSnap, bannedSnap, todaySnap,
+      vrPendingSnap, pendingReportsSnap, bannedSnap, todaySnap,
       completedTxSnap, pendingRishtaSnap, pendingCommunitySnap,
       pendingPostReportsSnap, pendingSupportReportsSnap,
+      vcEduSnap, vcSingleSnap, vcIncomeSnap, vcPropSnap, voicePendingSnap,
     ] = await Promise.all([
       db.collection('users').count().get(),
       db.collection('users').where('isPremium', '==', true).count().get(),
       db.collection('users').where('photoStatus', '==', 'pending').count().get(),
-      db.collection('users').where('verificationStatus', '==', 'pending').count().get(),
+      // Verification queue awaiting review. The badge used
+      // users.verificationStatus, which goes STALE (stays 'pending' even after
+      // the request is approved) — so it showed a count with an empty queue.
+      // Count the actual submission queue instead (identity/full requests).
+      db.collection('verification_requests').where('status', '==', 'pending').count().get(),
       // Reports Center queue = the `reports` collection (user reports). It
       // previously (incorrectly) counted open support_tickets, which is what
       // the separate Support badge is for.
@@ -45,6 +50,13 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       // UNREAD tickets — a different metric). Open/pending only; "Waiting for
       // User" and resolved are not admin-actionable here.
       db.collection('support_tickets').where('status', 'in', REPORT_OPEN).count().get(),
+      // Document-review verification queues (same ones the Verification page
+      // shows): education / confirmed-single / income / property + voice.
+      db.collection('verification_center').where('educationStatus', '==', 'pending').count().get(),
+      db.collection('verification_center').where('singleStatus', '==', 'pending').count().get(),
+      db.collection('verification_center').where('incomeStatus', '==', 'pending').count().get(),
+      db.collection('verification_center').where('propertyStatus', '==', 'pending').count().get(),
+      db.collection('users').where('voiceVerificationStatus', '==', 'pending').count().get(),
     ]);
 
     // Development/test payments (isTestPayment:true) are excluded from REAL
@@ -60,7 +72,15 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       todaySignups: todaySnap.data().count,
       premiumUsers: premiumSnap.data().count,
       pendingPhotos: pendingPhotosSnap.data().count,
-      pendingVerifications: pendingVerifSnap.data().count,
+      // Real pending verification review items across every queue the
+      // Verification page shows (NOT the stale users.verificationStatus flag).
+      pendingVerifications:
+        vrPendingSnap.data().count +
+        vcEduSnap.data().count +
+        vcSingleSnap.data().count +
+        vcIncomeSnap.data().count +
+        vcPropSnap.data().count +
+        voicePendingSnap.data().count,
       // All three Reports Center sources combined (user reports + post/comment
       // reports + open support tickets) so the badge matches the page.
       pendingReports:
