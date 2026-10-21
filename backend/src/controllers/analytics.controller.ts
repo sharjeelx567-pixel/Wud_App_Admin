@@ -14,13 +14,16 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
     const [
       totalSnap, premiumSnap, pendingPhotosSnap,
       pendingVerifSnap, pendingReportsSnap, bannedSnap, todaySnap,
-      completedTxSnap,
+      completedTxSnap, pendingRishtaSnap, pendingCommunitySnap,
     ] = await Promise.all([
       db.collection('users').count().get(),
       db.collection('users').where('isPremium', '==', true).count().get(),
       db.collection('users').where('photoStatus', '==', 'pending').count().get(),
       db.collection('users').where('verificationStatus', '==', 'pending').count().get(),
-      db.collection('support_tickets').where('status', 'in', ['open', 'Open']).count().get(),
+      // Content reports awaiting action = the Reports Center queue. This is the
+      // `reports` collection — it previously (incorrectly) counted open
+      // support_tickets, which is what the separate Support badge is for.
+      db.collection('reports').where('status', 'in', ['open', 'Open', 'pending', 'Pending']).count().get(),
       db.collection('users').where('isBanned', '==', true).count().get(),
       db.collection('users').where('createdAt', '>=', todayTimestamp).count().get(),
       // Same "sum" approach as payments.controller.ts's getSubscriptionMetrics
@@ -28,6 +31,9 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       // "Revenue Generated" card, which previously always showed PKR 0
       // because DashboardStats never included a totalRevenue field at all.
       db.collection('transactions').where('status', '==', 'completed').get(),
+      // Rishta + Community posts awaiting admin approval (their sidebar badges).
+      db.collection('rishta_posts').where('status', '==', 'pending').count().get(),
+      db.collection('community_posts').where('status', '==', 'pending').count().get(),
     ]);
 
     // Development/test payments (isTestPayment:true) are excluded from REAL
@@ -45,6 +51,8 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       pendingPhotos: pendingPhotosSnap.data().count,
       pendingVerifications: pendingVerifSnap.data().count,
       pendingReports: pendingReportsSnap.data().count,
+      pendingRishtaPosts: pendingRishtaSnap.data().count,
+      pendingCommunityPosts: pendingCommunitySnap.data().count,
       bannedUsers: bannedSnap.data().count,
       totalRevenue,
     };

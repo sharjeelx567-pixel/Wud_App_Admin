@@ -50,6 +50,8 @@ export default function DashboardLayout({
     photos: stats?.pendingPhotos || 0,
     verifications: stats?.pendingVerifications || 0,
     reports: stats?.pendingReports || 0,
+    rishtaPosts: stats?.pendingRishtaPosts || 0,
+    communityPosts: stats?.pendingCommunityPosts || 0,
     support: unreadSupport || 0,
   };
 

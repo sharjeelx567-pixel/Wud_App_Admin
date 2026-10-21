@@ -34,6 +34,8 @@ interface SidebarProps {
     photos?: number;
     verifications?: number;
     reports?: number;
+    rishtaPosts?: number;
+    communityPosts?: number;
     support?: number;
   };
 }
@@ -42,7 +44,7 @@ interface MenuItem {
   name: string;
   href: string;
   icon: any;
-  badgeKey?: "photos" | "verifications" | "reports" | "support";
+  badgeKey?: "photos" | "verifications" | "reports" | "rishtaPosts" | "communityPosts" | "support";
   // The permission that page's underlying data actually requires
   // server-side (see the requirePermission(...) call on that route's main
   // GET endpoint in nikkah_connect_admin/backend/src/routes). Omit only for
@@ -77,8 +79,8 @@ export default function Sidebar({ pendingCounts }: SidebarProps) {
         { name: "Photo Moderation", href: "/photos", icon: ImageIcon, badgeKey: "photos", permission: "photos.view" },
         { name: "Verification", href: "/verification", icon: ShieldCheck, badgeKey: "verifications", permission: "verification.view" },
         { name: "Reports Center", href: "/reports", icon: AlertTriangle, badgeKey: "reports", permission: "reports.view" },
-        { name: "Rishta Posts", href: "/posts", icon: HeartHandshake, permission: "posts.view" },
-        { name: "Community", href: "/community-posts", icon: MessageSquare, permission: "posts.view" },
+        { name: "Rishta Posts", href: "/posts", icon: HeartHandshake, badgeKey: "rishtaPosts", permission: "posts.view" },
+        { name: "Community", href: "/community-posts", icon: MessageSquare, badgeKey: "communityPosts", permission: "posts.view" },
         { name: "Support Helpdesk", href: "/support", icon: LifeBuoy, badgeKey: "support", permission: "support.view" },
       ],
     },

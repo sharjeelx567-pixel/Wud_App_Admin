@@ -381,6 +381,8 @@ export interface DashboardStats {
   pendingVerifications: number;
   pendingPhotos: number;
   pendingReports: number;
+  pendingRishtaPosts: number;
+  pendingCommunityPosts: number;
   bannedUsers: number;
 }
 
