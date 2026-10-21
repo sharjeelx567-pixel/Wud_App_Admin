@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "../../store/authStore";
 import Sidebar from "../../components/layout/Sidebar";
 import TopBar from "../../components/layout/TopBar";
@@ -16,7 +16,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, isLoading } = useAuthStore();
+
+  // Mobile slide-in nav drawer (desktop keeps the fixed sidebar).
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Close the drawer whenever the route changes (tapping a nav item navigates).
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -73,16 +82,29 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Sidebar Navigation */}
-      <Sidebar pendingCounts={pendingCounts} />
+      {/* Sidebar Navigation — fixed on desktop, slide-in drawer on mobile */}
+      <Sidebar
+        pendingCounts={pendingCounts}
+        mobileOpen={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+      />
+
+      {/* Mobile backdrop behind the open drawer */}
+      {mobileNavOpen && (
+        <div
+          onClick={() => setMobileNavOpen(false)}
+          className="fixed inset-0 bg-slate-900/40 z-30 md:hidden"
+          aria-hidden="true"
+        />
+      )}
 
       {/* Main Content Pane */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Header Controls */}
-        <TopBar />
+        <TopBar onMenuClick={() => setMobileNavOpen(true)} />
 
         {/* Dynamic Nested Page Content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto w-full">
             {children}
           </div>

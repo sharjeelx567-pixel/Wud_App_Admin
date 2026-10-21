@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ShieldCheck, Bell, Sparkles } from "lucide-react";
+import { ShieldCheck, Bell, Sparkles, Menu } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import api from "../../services/api";
 import { APP_NAME } from "../../config/branding";
 
-export default function TopBar() {
+export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { admin } = useAuthStore();
@@ -70,17 +70,28 @@ export default function TopBar() {
   };
 
   return (
-    <header className="h-18 border-b border-slate-200/80 bg-white/90 backdrop-blur-md flex items-center justify-between px-8 sticky top-0 z-20 shadow-xs">
-      <div>
-        <h1 className="text-lg font-bold font-display text-slate-900 tracking-tight flex items-center gap-2">
-          {title}
-        </h1>
-        <p className="text-xs text-slate-400 font-medium">
-          {subtitle}
-        </p>
+    <header className="h-18 border-b border-slate-200/80 bg-white/90 backdrop-blur-md flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 shadow-xs gap-3">
+      <div className="flex items-center gap-2 min-w-0">
+        {/* Mobile: open the nav drawer */}
+        <button
+          onClick={onMenuClick}
+          className="md:hidden p-2 -ml-1 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/70 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
+          title="Open menu"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-base md:text-lg font-bold font-display text-slate-900 tracking-tight truncate">
+            {title}
+          </h1>
+          <p className="text-xs text-slate-400 font-medium truncate hidden sm:block">
+            {subtitle}
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
         <span className="text-xs text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/70 hidden sm:inline-block">
           {getTodayDate()}
         </span>
