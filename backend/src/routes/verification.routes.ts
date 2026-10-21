@@ -22,6 +22,12 @@ import {
   getSingleQueue,
   approveSingle,
   rejectSingle,
+  getIncomeQueue,
+  approveIncome,
+  rejectIncome,
+  getPropertyQueue,
+  approveProperty,
+  rejectProperty,
   getVoiceVerificationQueue,
   approveVoiceVerification,
   rejectVoiceVerification,
@@ -67,6 +73,14 @@ router.patch('/:id/reject-education', requirePermission('verification.reject'), 
 router.get('/single/queue', requirePermission('verification.view'), getSingleQueue);
 router.patch('/:id/approve-single', requirePermission('verification.approve'), approveSingle);
 router.patch('/:id/reject-single', requirePermission('verification.reject'), rejectSingle);
+
+// ── Income + Property document review (Premium badges, scope §3 #2)
+router.get('/income/queue', requirePermission('verification.view'), getIncomeQueue);
+router.patch('/:id/approve-income', requirePermission('verification.approve'), approveIncome);
+router.patch('/:id/reject-income', requirePermission('verification.reject'), rejectIncome);
+router.get('/property/queue', requirePermission('verification.view'), getPropertyQueue);
+router.patch('/:id/approve-property', requirePermission('verification.approve'), approveProperty);
+router.patch('/:id/reject-property', requirePermission('verification.reject'), rejectProperty);
 
 // ── Voice & Gender Verification Routes (Admin-Only) ────────────────────────
 router.get('/voice-queue', requirePermission('verification.view'), getVoiceVerificationQueue);

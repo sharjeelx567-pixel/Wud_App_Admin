@@ -31,7 +31,9 @@ import {
   Send,
   ExternalLink,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Briefcase,
+  Home
 } from "lucide-react";
 
 interface VerificationRequest {
@@ -154,7 +156,7 @@ function SecureCnicImage({
 export default function VerificationPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<
-    "identity" | "full" | "voice" | "education" | "single" | "human"
+    "identity" | "full" | "voice" | "education" | "single" | "human" | "income" | "property"
   >("identity");
   const [selectedReq, setSelectedReq] = useState<VerificationRequest | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
@@ -263,9 +265,21 @@ export default function VerificationPage() {
     queryFn: () => api.get("/verification/human/queue").then((r) => r.data),
     refetchInterval: 15000,
   });
+  const { data: incomeData } = useQuery<{ data: any[] }>({
+    queryKey: ["income-queue"],
+    queryFn: () => api.get("/verification/income/queue").then((r) => r.data),
+    refetchInterval: 15000,
+  });
+  const { data: propertyData } = useQuery<{ data: any[] }>({
+    queryKey: ["property-queue"],
+    queryFn: () => api.get("/verification/property/queue").then((r) => r.data),
+    refetchInterval: 15000,
+  });
   const educationCount = educationData?.data?.length ?? 0;
   const singleCount = singleData?.data?.length ?? 0;
   const humanCount = humanData?.data?.length ?? 0;
+  const incomeCount = incomeData?.data?.length ?? 0;
+  const propertyCount = propertyData?.data?.length ?? 0;
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["identity-queue"] });
@@ -488,6 +502,34 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
           {humanCount > 0 && (
             <span className="px-2 py-0.5 bg-teal-600 text-white rounded-full text-[10px] font-bold ml-1">
               {humanCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("income")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "income" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <Briefcase className="w-4 h-4 text-amber-600" />
+          Income
+          {incomeCount > 0 && (
+            <span className="px-2 py-0.5 bg-amber-600 text-white rounded-full text-[10px] font-bold ml-1">
+              {incomeCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("property")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "property" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <Home className="w-4 h-4 text-emerald-600" />
+          Property
+          {propertyCount > 0 && (
+            <span className="px-2 py-0.5 bg-emerald-600 text-white rounded-full text-[10px] font-bold ml-1">
+              {propertyCount}
             </span>
           )}
         </button>
@@ -1127,6 +1169,26 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
           approvePath={(uid) => `/verification/${uid}/approve-human`}
           rejectPath={(uid) => `/verification/${uid}/reject-human`}
           kind="human"
+        />
+      )}
+      {activeTab === "income" && (
+        <DocReviewTab
+          title="Income"
+          queueKey="income-queue"
+          queuePath="/verification/income/queue"
+          approvePath={(uid) => `/verification/${uid}/approve-income`}
+          rejectPath={(uid) => `/verification/${uid}/reject-income`}
+          kind="doc"
+        />
+      )}
+      {activeTab === "property" && (
+        <DocReviewTab
+          title="Property"
+          queueKey="property-queue"
+          queuePath="/verification/property/queue"
+          approvePath={(uid) => `/verification/${uid}/approve-property`}
+          rejectPath={(uid) => `/verification/${uid}/reject-property`}
+          kind="doc"
         />
       )}
 

@@ -870,3 +870,65 @@ export async function rejectSingle(req: Request, res: Response): Promise<void> {
     res.status(500).json(errorResponse('Failed to reject confirmed-single', error));
   }
 }
+
+// ── Income Verification (Premium, scope §3 #2) ───────────────────────────────
+// The app submits a salary slip / bank statement to
+// verification_center/{uid}.incomeStatus = 'pending' (salarySlipUrl holds the
+// document). Same document-review flow as Education/Single, just a different
+// status + badge field. incomeVerified is premium-gated on display.
+export async function getIncomeQueue(_req: Request, res: Response): Promise<void> {
+  try {
+    await _docQueue('incomeStatus', 'salarySlipUrl', res);
+  } catch (error) {
+    console.error('[Verification] getIncomeQueue error:', error);
+    res.status(500).json(errorResponse('Failed to fetch income queue', error));
+  }
+}
+export async function approveIncome(req: Request, res: Response): Promise<void> {
+  try {
+    await _docApprove(req, res, 'incomeStatus', 'incomeVerified',
+      'income_verification_approved', 'Income Verified ✅',
+      'Your income has been verified — your Income Verified badge shows while your subscription is active.');
+  } catch (error) {
+    console.error('[Verification] approveIncome error:', error);
+    res.status(500).json(errorResponse('Failed to approve income', error));
+  }
+}
+export async function rejectIncome(req: Request, res: Response): Promise<void> {
+  try {
+    await _docReject(req, res, 'incomeStatus', 'incomeVerified', 'income_verification_rejected');
+  } catch (error) {
+    console.error('[Verification] rejectIncome error:', error);
+    res.status(500).json(errorResponse('Failed to reject income', error));
+  }
+}
+
+// ── Property Verification (Premium, scope §3 #2) ─────────────────────────────
+// verification_center/{uid}.propertyStatus = 'pending', document in
+// propertyRegistryUrl. Mirror of the income flow.
+export async function getPropertyQueue(_req: Request, res: Response): Promise<void> {
+  try {
+    await _docQueue('propertyStatus', 'propertyRegistryUrl', res);
+  } catch (error) {
+    console.error('[Verification] getPropertyQueue error:', error);
+    res.status(500).json(errorResponse('Failed to fetch property queue', error));
+  }
+}
+export async function approveProperty(req: Request, res: Response): Promise<void> {
+  try {
+    await _docApprove(req, res, 'propertyStatus', 'propertyVerified',
+      'property_verification_approved', 'Property Verified ✅',
+      'Your property document has been verified — your Property Verified badge shows while your subscription is active.');
+  } catch (error) {
+    console.error('[Verification] approveProperty error:', error);
+    res.status(500).json(errorResponse('Failed to approve property', error));
+  }
+}
+export async function rejectProperty(req: Request, res: Response): Promise<void> {
+  try {
+    await _docReject(req, res, 'propertyStatus', 'propertyVerified', 'property_verification_rejected');
+  } catch (error) {
+    console.error('[Verification] rejectProperty error:', error);
+    res.status(500).json(errorResponse('Failed to reject property', error));
+  }
+}
