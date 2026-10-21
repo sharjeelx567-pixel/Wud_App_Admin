@@ -412,11 +412,12 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         ))}
       </div>
 
-      {/* 2. Mode Selector Tabs */}
-      <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl w-fit border border-slate-200/80">
+      {/* 2. Mode Selector Tabs — horizontally scrollable so all 8 queues stay
+          reachable (and each stays single-line) on narrower screens. */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 overflow-x-auto max-w-full">
         <button
           onClick={() => setActiveTab("identity")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "identity"
               ? "bg-white text-indigo-600 shadow-xs"
               : "text-slate-500 hover:text-slate-900"
@@ -433,7 +434,7 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
 
         <button
           onClick={() => setActiveTab("full")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "full"
               ? "bg-white text-indigo-600 shadow-xs"
               : "text-slate-500 hover:text-slate-900"
@@ -449,7 +450,7 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         </button>
         <button
           onClick={() => setActiveTab("voice")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "voice"
               ? "bg-white text-indigo-600 shadow-xs"
               : "text-slate-500 hover:text-slate-900"
@@ -465,7 +466,7 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         </button>
         <button
           onClick={() => setActiveTab("education")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "education" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
           }`}
         >
@@ -479,7 +480,7 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         </button>
         <button
           onClick={() => setActiveTab("single")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "single" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
           }`}
         >
@@ -493,7 +494,7 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         </button>
         <button
           onClick={() => setActiveTab("human")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "human" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
           }`}
         >
@@ -507,7 +508,7 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         </button>
         <button
           onClick={() => setActiveTab("income")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "income" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
           }`}
         >
@@ -521,7 +522,7 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         </button>
         <button
           onClick={() => setActiveTab("property")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "property" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
           }`}
         >
