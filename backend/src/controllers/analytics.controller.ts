@@ -11,19 +11,21 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
     const todayTimestamp = today;
 
     // Run all count queries in parallel for performance
+    const REPORT_OPEN = ['open', 'Open', 'pending', 'Pending'];
     const [
       totalSnap, premiumSnap, pendingPhotosSnap,
       pendingVerifSnap, pendingReportsSnap, bannedSnap, todaySnap,
       completedTxSnap, pendingRishtaSnap, pendingCommunitySnap,
+      pendingPostReportsSnap,
     ] = await Promise.all([
       db.collection('users').count().get(),
       db.collection('users').where('isPremium', '==', true).count().get(),
       db.collection('users').where('photoStatus', '==', 'pending').count().get(),
       db.collection('users').where('verificationStatus', '==', 'pending').count().get(),
-      // Content reports awaiting action = the Reports Center queue. This is the
-      // `reports` collection — it previously (incorrectly) counted open
-      // support_tickets, which is what the separate Support badge is for.
-      db.collection('reports').where('status', 'in', ['open', 'Open', 'pending', 'Pending']).count().get(),
+      // Reports Center queue = the `reports` collection (user reports). It
+      // previously (incorrectly) counted open support_tickets, which is what
+      // the separate Support badge is for.
+      db.collection('reports').where('status', 'in', REPORT_OPEN).count().get(),
       db.collection('users').where('isBanned', '==', true).count().get(),
       db.collection('users').where('createdAt', '>=', todayTimestamp).count().get(),
       // Same "sum" approach as payments.controller.ts's getSubscriptionMetrics
@@ -34,6 +36,10 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       // Rishta + Community posts awaiting admin approval (their sidebar badges).
       db.collection('rishta_posts').where('status', '==', 'pending').count().get(),
       db.collection('community_posts').where('status', '==', 'pending').count().get(),
+      // Post/comment content reports (reportCommunityPost → post_reports). The
+      // Reports Center merges this collection with `reports`, so the badge must
+      // sum BOTH — otherwise content reports (the common case) show no count.
+      db.collection('post_reports').where('status', 'in', REPORT_OPEN).count().get(),
     ]);
 
     // Development/test payments (isTestPayment:true) are excluded from REAL
@@ -50,7 +56,8 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       premiumUsers: premiumSnap.data().count,
       pendingPhotos: pendingPhotosSnap.data().count,
       pendingVerifications: pendingVerifSnap.data().count,
-      pendingReports: pendingReportsSnap.data().count,
+      // Both report sources combined (user reports + post/comment reports).
+      pendingReports: pendingReportsSnap.data().count + pendingPostReportsSnap.data().count,
       pendingRishtaPosts: pendingRishtaSnap.data().count,
       pendingCommunityPosts: pendingCommunitySnap.data().count,
       bannedUsers: bannedSnap.data().count,
