@@ -16,7 +16,7 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       totalSnap, premiumSnap, pendingPhotosSnap,
       pendingVerifSnap, pendingReportsSnap, bannedSnap, todaySnap,
       completedTxSnap, pendingRishtaSnap, pendingCommunitySnap,
-      pendingPostReportsSnap,
+      pendingPostReportsSnap, pendingSupportReportsSnap,
     ] = await Promise.all([
       db.collection('users').count().get(),
       db.collection('users').where('isPremium', '==', true).count().get(),
@@ -40,6 +40,11 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       // Reports Center merges this collection with `reports`, so the badge must
       // sum BOTH — otherwise content reports (the common case) show no count.
       db.collection('post_reports').where('status', 'in', REPORT_OPEN).count().get(),
+      // The Reports Center page ALSO merges open support tickets into its list,
+      // so the badge counts them too (the "Support" badge separately tracks
+      // UNREAD tickets — a different metric). Open/pending only; "Waiting for
+      // User" and resolved are not admin-actionable here.
+      db.collection('support_tickets').where('status', 'in', REPORT_OPEN).count().get(),
     ]);
 
     // Development/test payments (isTestPayment:true) are excluded from REAL
@@ -56,8 +61,12 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       premiumUsers: premiumSnap.data().count,
       pendingPhotos: pendingPhotosSnap.data().count,
       pendingVerifications: pendingVerifSnap.data().count,
-      // Both report sources combined (user reports + post/comment reports).
-      pendingReports: pendingReportsSnap.data().count + pendingPostReportsSnap.data().count,
+      // All three Reports Center sources combined (user reports + post/comment
+      // reports + open support tickets) so the badge matches the page.
+      pendingReports:
+        pendingReportsSnap.data().count +
+        pendingPostReportsSnap.data().count +
+        pendingSupportReportsSnap.data().count,
       pendingRishtaPosts: pendingRishtaSnap.data().count,
       pendingCommunityPosts: pendingCommunitySnap.data().count,
       bannedUsers: bannedSnap.data().count,
