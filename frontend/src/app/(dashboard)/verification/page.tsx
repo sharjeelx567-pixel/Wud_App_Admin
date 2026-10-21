@@ -244,6 +244,29 @@ export default function VerificationPage() {
     refetchInterval: 15000,
   });
 
+  // Document-review queue counts (Education / Confirmed Single / Human Video)
+  // so each tab shows a live pending-count badge — the Identity/Full/Voice tabs
+  // already did, these three didn't. Same queryKey as the DocReviewTab that
+  // renders the list, so react-query shares one fetch (no duplicate request).
+  const { data: educationData } = useQuery<{ data: any[] }>({
+    queryKey: ["education-queue"],
+    queryFn: () => api.get("/verification/education/queue").then((r) => r.data),
+    refetchInterval: 15000,
+  });
+  const { data: singleData } = useQuery<{ data: any[] }>({
+    queryKey: ["single-queue"],
+    queryFn: () => api.get("/verification/single/queue").then((r) => r.data),
+    refetchInterval: 15000,
+  });
+  const { data: humanData } = useQuery<{ data: any[] }>({
+    queryKey: ["human-queue"],
+    queryFn: () => api.get("/verification/human/queue").then((r) => r.data),
+    refetchInterval: 15000,
+  });
+  const educationCount = educationData?.data?.length ?? 0;
+  const singleCount = singleData?.data?.length ?? 0;
+  const humanCount = humanData?.data?.length ?? 0;
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["identity-queue"] });
     queryClient.invalidateQueries({ queryKey: ["full-queue"] });
@@ -434,6 +457,11 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         >
           <Shield className="w-4 h-4 text-indigo-600" />
           Education
+          {educationCount > 0 && (
+            <span className="px-2 py-0.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold ml-1">
+              {educationCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab("single")}
@@ -443,6 +471,11 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         >
           <ShieldCheck className="w-4 h-4 text-pink-600" />
           Confirmed Single
+          {singleCount > 0 && (
+            <span className="px-2 py-0.5 bg-pink-600 text-white rounded-full text-[10px] font-bold ml-1">
+              {singleCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab("human")}
@@ -452,6 +485,11 @@ Please ensure you have your original CNIC and join on time. BarakAllahu Feek!
         >
           <Video className="w-4 h-4 text-teal-600" />
           Human Video
+          {humanCount > 0 && (
+            <span className="px-2 py-0.5 bg-teal-600 text-white rounded-full text-[10px] font-bold ml-1">
+              {humanCount}
+            </span>
+          )}
         </button>
 
       </div>
