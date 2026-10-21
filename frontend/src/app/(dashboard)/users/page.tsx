@@ -248,7 +248,7 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header Toolbar: Search & Filter Pills */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs space-y-4">
+      <div className="panel p-4 space-y-4">
         <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
           {/* Search bar */}
           <div className="relative flex-1 max-w-md">
@@ -283,7 +283,7 @@ export default function UsersPage() {
               }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 filter === tab.id
-                  ? "bg-indigo-600 text-white shadow-xs"
+                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-sm shadow-indigo-500/30"
                   : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
               }`}
             >
@@ -308,7 +308,7 @@ export default function UsersPage() {
       )}
 
       {/* 2. Main Users Table */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+      <div className="panel overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50/80 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
@@ -338,7 +338,7 @@ export default function UsersPage() {
                 </tr>
               ) : (
                 paginatedUsers.map((user) => (
-                  <tr key={user.uid} className="hover:bg-slate-50/70 transition-colors">
+                  <tr key={user.uid} className="hover:bg-indigo-50/40 transition-colors">
                     {/* Candidate Name & Avatar */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
