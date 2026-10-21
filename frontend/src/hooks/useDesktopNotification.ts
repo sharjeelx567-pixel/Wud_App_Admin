@@ -4,35 +4,46 @@ export function useDesktopNotification(count: number, title: string = 'New Notif
   const prevCountRef = useRef(count);
 
   useEffect(() => {
-    // Check if notifications are supported
-    if (!('Notification' in window)) {
+    // SSR guard + feature detection. NOTE: on some mobile browsers (e.g.
+    // Android Chrome) `Notification` EXISTS in window, so this check passes,
+    // but `new Notification()` still THROWS "Illegal constructor" because the
+    // platform requires ServiceWorkerRegistration.showNotification() instead.
+    // Desktop notifications are a nice-to-have, so the whole block is wrapped
+    // in try/catch — previously an unhandled throw here crashed the entire
+    // admin app with a client-side exception, but only on mobile.
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      prevCountRef.current = count;
       return;
     }
 
-    // Request permission if not already granted or denied
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    try {
+      if (Notification.permission === 'default') {
+        const req = Notification.requestPermission();
+        // Modern browsers return a Promise; older ones use a callback and
+        // return undefined — guard before calling .catch.
+        if (req && typeof (req as Promise<unknown>).catch === 'function') {
+          (req as Promise<unknown>).catch(() => {});
+        }
+      }
 
-    // Trigger notification if count increased
-    if (count > prevCountRef.current) {
-      if (Notification.permission === 'granted') {
+      if (count > prevCountRef.current && Notification.permission === 'granted') {
         const notification = new Notification(title, {
           body: message,
-          icon: '/favicon.ico', // Optional icon
+          icon: '/favicon.ico',
         });
 
-        // Optional: Play a sound
         try {
           const audio = new Audio('/notification.mp3');
-          audio.play().catch(e => console.log('Audio play prevented by browser', e));
-        } catch (error) {
+          audio.play().catch(() => {});
+        } catch {
           // Ignore audio errors
         }
 
-        // Close after 5 seconds
         setTimeout(() => notification.close(), 5000);
       }
+    } catch {
+      // Mobile browsers reject `new Notification()` / requestPermission — never
+      // let that crash the app.
     }
 
     prevCountRef.current = count;
