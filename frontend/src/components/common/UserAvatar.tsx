@@ -46,7 +46,11 @@ export default function UserAvatar({
         <img
           src={safeSrc}
           alt={name || "Candidate"}
-          className="w-full h-full object-cover"
+          // object-top: profile photos are often tall full-body portraits, and
+          // a centered cover-crop in a small avatar cuts off the face (shows
+          // the torso/lap instead). Anchoring the crop to the top keeps the
+          // face visible — matches the app's CachedProfileImage topCenter.
+          className="w-full h-full object-cover object-top"
           onError={() => setImgError(true)}
           loading="lazy"
         />
