@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { initializeFirebase, db } from './config/firebase';
 import apiRoutes from './routes';
+import { renderParentRoom } from './controllers/parentRoom.controller';
 import * as bcrypt from 'bcryptjs';
 import { APP_NAME } from './config/branding';
 
@@ -102,6 +103,12 @@ app.use((req, res, next) => {
 });
 
 app.use('/api', apiRoutes);
+
+// Public, unauthenticated read-only Family Room web page (COMM-04 external
+// link). Mounted at the root (not under /api, so no admin auth) — the room id
+// is the access token. vercel.json rewrites every path to this function, so
+// `/parent-room/:roomId` reaches Express with the original path intact.
+app.get('/parent-room/:roomId', renderParentRoom);
 
 app.get(['/', '/api'], (req, res) => {
   res.json({
