@@ -76,35 +76,97 @@ export async function getCompatibilityStats(req: Request, res: Response): Promis
 
 export async function getConnectionRequests(req: Request, res: Response): Promise<void> {
   try {
-    const snapshot = await db.collection('connection_requests')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
+    // A "request" in the app is TWO things: an interest/like (user_interests)
+    // and a formal connect request (connection_requests). The page used to read
+    // only connection_requests — a near-empty collection — so the real interest
+    // activity (the bulk of it) was invisible ("not match and not interest").
+    // Merge both, tagged by kind, so the admin sees every request. Fetch without
+    // orderBy + sort in memory so docs missing createdAt are never dropped.
+    const [interestsSnap, connsSnap] = await Promise.all([
+      db.collection('user_interests').limit(200).get(),
+      db.collection('connection_requests').limit(200).get(),
+    ]);
 
-    // Flutter writes senderId/receiverId (see matching_repository_impl.dart)
-    // with no display name on the doc itself — enrich both sides so the
-    // admin table doesn't fall back to raw UIDs / a "Candidate B" placeholder.
-    const requests = await Promise.all(
-      snapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        const [senderDoc, receiverDoc] = await Promise.all([
-          data.senderId ? db.collection('users').doc(data.senderId).get() : null,
-          data.receiverId ? db.collection('users').doc(data.receiverId).get() : null,
-        ]);
-        return {
-          id: doc.id,
-          ...data,
-          senderName: senderDoc?.data()?.displayName || '',
-          recipientName: receiverDoc?.data()?.displayName || '',
-          recipientId: data.receiverId || '',
-        };
+    const rows = [
+      ...interestsSnap.docs.map((d) => ({ d, kind: 'Interest' as const })),
+      ...connsSnap.docs.map((d) => ({ d, kind: 'Connection' as const })),
+    ];
+
+    // Resolve every sender/receiver display name once (dedup by uid).
+    const uids = new Set<string>();
+    rows.forEach(({ d }) => {
+      const x = d.data();
+      if (x.senderId) uids.add(x.senderId);
+      if (x.receiverId) uids.add(x.receiverId);
+    });
+    const nameMap: Record<string, string> = {};
+    await Promise.all(
+      [...uids].map(async (uid) => {
+        const u = await db.collection('users').doc(uid).get();
+        nameMap[uid] = u.data()?.displayName || '';
       })
     );
+
+    const requests = rows.map(({ d, kind }) => {
+      const x = d.data();
+      return {
+        id: `${kind}:${d.id}`,
+        kind,
+        senderId: x.senderId || '',
+        senderName: nameMap[x.senderId] || '',
+        recipientId: x.receiverId || '',
+        recipientName: nameMap[x.receiverId] || '',
+        status: x.status || 'pending',
+        createdAt: x.createdAt || null,
+      };
+    });
+    requests.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
     res.json(successResponse(requests));
   } catch (error) {
     console.error('[Matching Admin] getConnectionRequests error:', error);
     res.status(500).json(errorResponse('Failed to fetch connection requests', error));
+  }
+}
+
+export async function getMatches(req: Request, res: Response): Promise<void> {
+  try {
+    // Mutual matches (both sides accepted). Stored as userA/userB; enrich with
+    // names + photos. No orderBy (some docs may lack createdAt) — sort in memory.
+    const snap = await db.collection('matches').limit(200).get();
+    const uids = new Set<string>();
+    snap.docs.forEach((d) => {
+      const x = d.data();
+      if (x.userA) uids.add(x.userA);
+      if (x.userB) uids.add(x.userB);
+    });
+    const userMap: Record<string, { name: string; photo: string }> = {};
+    await Promise.all(
+      [...uids].map(async (uid) => {
+        const u = (await db.collection('users').doc(uid).get()).data() || {};
+        userMap[uid] = { name: u.displayName || '', photo: u.profileImage || '' };
+      })
+    );
+
+    const matches = snap.docs.map((d) => {
+      const x = d.data();
+      return {
+        id: d.id,
+        userA: x.userA || '',
+        userAName: userMap[x.userA]?.name || '',
+        userAPhoto: userMap[x.userA]?.photo || '',
+        userB: x.userB || '',
+        userBName: userMap[x.userB]?.name || '',
+        userBPhoto: userMap[x.userB]?.photo || '',
+        createdAt: x.createdAt || null,
+      };
+    });
+    matches.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+
+    res.json(successResponse(matches));
+  } catch (error) {
+    console.error('[Matching Admin] getMatches error:', error);
+    res.status(500).json(errorResponse('Failed to fetch matches', error));
   }
 }
 

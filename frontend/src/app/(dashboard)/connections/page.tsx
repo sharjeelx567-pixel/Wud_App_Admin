@@ -28,9 +28,9 @@ function formatFirestoreDate(raw: any, fallback: string = "Recent") {
 }
 
 export default function ConnectionsPage() {
-  const [activeTab, setActiveTab] = useState<"requests" | "compatibility" | "dormant">("requests");
+  const [activeTab, setActiveTab] = useState<"requests" | "matches" | "compatibility" | "dormant">("requests");
 
-  // Fetch Connection Requests
+  // Fetch Connection Requests (interests + connection requests, merged)
   const { data: requestsData, isLoading: isLoadingReqs } = useQuery({
     queryKey: ["admin-connection-requests"],
     queryFn: async () => {
@@ -40,6 +40,18 @@ export default function ConnectionsPage() {
     enabled: activeTab === "requests",
     refetchInterval: 30000,
   });
+
+  // Fetch Mutual Matches
+  const { data: matchesData, isLoading: isLoadingMatches } = useQuery({
+    queryKey: ["admin-mutual-matches"],
+    queryFn: async () => {
+      const res = await api.get("/matching/matches");
+      return res.data?.data || [];
+    },
+    enabled: activeTab === "matches",
+    refetchInterval: 30000,
+  });
+  const mutualMatches = Array.isArray(matchesData) ? matchesData : [];
 
   // Fetch Compatibility Stats
   const { data: compatData, isLoading: isLoadingCompat } = useQuery({
@@ -107,7 +119,8 @@ export default function ConnectionsPage() {
       {/* 2. Tabs Switcher */}
       <div className="flex gap-2 p-1.5 bg-slate-100/90 rounded-2xl w-fit border border-slate-200/80">
         {[
-          { id: "requests" as const, name: "Connection Requests", icon: HeartHandshake },
+          { id: "requests" as const, name: "Interests & Requests", icon: HeartHandshake },
+          { id: "matches" as const, name: "Mutual Matches", icon: Sparkles },
           { id: "compatibility" as const, name: "Compatibility Distribution", icon: BarChart2 },
           { id: "dormant" as const, name: "Dormant Profiles (>90d)", icon: UserX },
         ].map((tab) => (
@@ -136,6 +149,7 @@ export default function ConnectionsPage() {
                   <th className="py-3 px-4">Requester Candidate</th>
                   <th className="py-3 px-4">Direction</th>
                   <th className="py-3 px-4">Recipient Candidate</th>
+                  <th className="py-3 px-4">Type</th>
                   <th className="py-3 px-4">Initiated Date</th>
                   <th className="py-3 px-4 text-right">Status</th>
                 </tr>
@@ -144,15 +158,15 @@ export default function ConnectionsPage() {
                 {isLoadingReqs ? (
                   [...Array(4)].map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      <td colSpan={5} className="py-4 px-4">
+                      <td colSpan={6} className="py-4 px-4">
                         <div className="h-6 bg-slate-100 rounded-lg" />
                       </td>
                     </tr>
                   ))
                 ) : connectionRequests.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400">
-                      No candidate connection requests recorded yet.
+                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                      No interests or connection requests recorded yet.
                     </td>
                   </tr>
                 ) : (
@@ -167,10 +181,72 @@ export default function ConnectionsPage() {
                       <td className="py-3.5 px-4 font-bold text-slate-900">
                         {req.recipientName || req.recipientId || "Candidate B"}
                       </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                            req.kind === "Connection"
+                              ? "bg-violet-50 text-violet-700 border-violet-200"
+                              : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                          }`}
+                        >
+                          {req.kind || "Interest"}
+                        </span>
+                      </td>
                       <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
                         {formatFirestoreDate(req.createdAt)}
                       </td>
                       <td className="py-3.5 px-4 text-right">{getStatusPill(req.status)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "matches" && (
+        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-3 px-4">Candidate A</th>
+                  <th className="py-3 px-4 text-center">Matched</th>
+                  <th className="py-3 px-4">Candidate B</th>
+                  <th className="py-3 px-4 text-right">Matched Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {isLoadingMatches ? (
+                  [...Array(4)].map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td colSpan={4} className="py-4 px-4">
+                        <div className="h-6 bg-slate-100 rounded-lg" />
+                      </td>
+                    </tr>
+                  ))
+                ) : mutualMatches.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-slate-400">
+                      No mutual matches recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  mutualMatches.map((m: any) => (
+                    <tr key={m.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {m.userAName || m.userA || "Candidate A"}
+                      </td>
+                      <td className="py-3.5 px-4 text-center text-rose-500">
+                        <HeartHandshake className="w-4 h-4 inline" />
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {m.userBName || m.userB || "Candidate B"}
+                      </td>
+                      <td className="py-3.5 px-4 text-right text-slate-500 font-mono text-[11px]">
+                        {formatFirestoreDate(m.createdAt)}
+                      </td>
                     </tr>
                   ))
                 )}
