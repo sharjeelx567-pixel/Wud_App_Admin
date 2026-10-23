@@ -16,7 +16,8 @@ import {
   ShieldAlert,
   ChevronDown,
   CheckCircle2,
-  Info
+  Info,
+  Heart
 } from "lucide-react";
 
 // Same 7 canonical roles as everywhere else in the console (backend
@@ -152,18 +153,39 @@ export default function LoginPage() {
       >
         <div className="absolute inset-0 bg-gradient-to-t from-[#2b0c16]/92 via-[#2b0c16]/40 to-[#2b0c16]/15" />
         <div className="relative z-10 p-12 xl:p-16 text-white">
-          <div className="flex items-center gap-2.5 mb-6">
+          <div className="flex items-center gap-2.5 mb-10">
             <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center border border-white/25">
               <Sparkles className="w-5 h-5" />
             </div>
             <span className="font-serif text-xl font-semibold tracking-wide">{APP_NAME}</span>
           </div>
-          <h2 className="font-serif text-4xl xl:text-5xl font-semibold leading-[1.1] max-w-lg">
-            Where meaningful nikahs begin.
+
+          {/* Gold eyebrow */}
+          <div className="flex items-center gap-3 mb-5">
+            <span className="h-px w-10 bg-[#D4AF37]" />
+            <span className="text-[#EBCB72] text-[11px] font-semibold uppercase tracking-[0.22em]">
+              Nikah, with trust
+            </span>
+          </div>
+
+          <h2 className="font-serif text-4xl xl:text-[3.3rem] font-semibold leading-[1.12] max-w-lg">
+            Where meaningful{" "}
+            <span className="italic text-[#F3D573]">nikahs</span> begin.
           </h2>
           <p className="text-white/75 text-sm mt-5 max-w-sm leading-relaxed">
-            The administration &amp; safety console — guiding every profile, match and verification with care.
+            The administration &amp; safety console — guiding every profile, match and
+            verification with care, dignity and a family-first heart.
           </p>
+
+          {/* Trust row */}
+          <div className="flex items-center gap-6 mt-12 text-white/70 text-xs font-medium">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-[#EBCB72]" /> Verified profiles
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Heart className="w-4 h-4 text-[#EBCB72]" /> Family-first
+            </span>
+          </div>
         </div>
       </div>
 

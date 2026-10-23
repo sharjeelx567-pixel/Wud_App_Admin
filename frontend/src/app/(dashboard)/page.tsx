@@ -40,6 +40,8 @@ export default function DashboardPage() {
   // Gating on `enabled` stops the doomed request before it starts, and the
   // JSX below hides the section entirely instead of showing a stuck loader.
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const admin = useAuthStore((s) => s.admin);
+  const firstName = admin?.displayName?.trim()?.split(/\s+/)[0] || "Admin";
   const canViewAnalytics = hasPermission("analytics.view");
   const canViewUsers = hasPermission("users.view");
   const canViewAuditLogs = hasPermission("audit_logs.view");
@@ -160,14 +162,18 @@ export default function DashboardPage() {
       >
         <div className="absolute inset-0 bg-gradient-to-r from-[#2b0c16]/95 via-[#2b0c16]/70 to-[#2b0c16]/20" />
         <div className="relative z-10 p-7 sm:p-10 text-white">
-          <p className="text-white/70 text-[11px] font-bold uppercase tracking-[0.18em] mb-2">
-            {APP_NAME} · Admin Console
-          </p>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="h-px w-8 bg-[#D4AF37]" />
+            <p className="text-[#EBCB72] text-[11px] font-bold uppercase tracking-[0.18em]">
+              {APP_NAME} · Admin Console
+            </p>
+          </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-semibold leading-tight max-w-xl">
-            Guiding meaningful nikahs, every day.
+            Welcome back, <span className="italic text-[#F3D573]">{firstName}</span>
           </h1>
           <p className="text-white/75 text-sm mt-2.5 max-w-md">
-            A real-time overview of profiles, matches, verifications and platform health.
+            Guiding meaningful nikahs today — profiles, matches, verifications and platform
+            health, all at a glance.
           </p>
         </div>
       </div>
