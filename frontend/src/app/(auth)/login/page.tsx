@@ -144,32 +144,59 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Subtle background ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-indigo-500/8 rounded-full blur-3xl pointer-events-none" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-md relative z-10"
+    <div className="min-h-screen lg:flex bg-[#fbf7f4]">
+      {/* LEFT — full wedding hero (desktop) */}
+      <div
+        className="hidden lg:flex lg:w-[56%] relative bg-cover bg-center items-end"
+        style={{ backgroundImage: "url('/wedding-login.jpg')" }}
       >
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-            <Sparkles className="w-7 h-7" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#2b0c16]/92 via-[#2b0c16]/40 to-[#2b0c16]/15" />
+        <div className="relative z-10 p-12 xl:p-16 text-white">
+          <div className="flex items-center gap-2.5 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center border border-white/25">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <span className="font-serif text-xl font-semibold tracking-wide">{APP_NAME}</span>
           </div>
-
-          <h1 className="text-2xl font-bold font-display text-slate-900 tracking-tight">
-            {APP_NAME}
-          </h1>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            Enterprise Administration & Safety Console
+          <h2 className="font-serif text-4xl xl:text-5xl font-semibold leading-[1.1] max-w-lg">
+            Where meaningful nikahs begin.
+          </h2>
+          <p className="text-white/75 text-sm mt-5 max-w-sm leading-relaxed">
+            The administration &amp; safety console — guiding every profile, match and verification with care.
           </p>
         </div>
+      </div>
 
-        {/* Login Card */}
-        <div className="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/60 border border-slate-200/80">
+      {/* RIGHT — form panel (wedding backdrop on mobile) */}
+      <div className="relative flex-1 flex items-center justify-center p-5 sm:p-8 min-h-screen lg:min-h-0">
+        {/* Mobile-only wedding backdrop */}
+        <div
+          className="lg:hidden absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/wedding-login.jpg')" }}
+        />
+        <div className="lg:hidden absolute inset-0 bg-[#2b0c16]/65" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full max-w-md relative z-10"
+        >
+          {/* Brand Header */}
+          <div className="text-center mb-7">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-[#8C1C3F] to-[#A63255] flex items-center justify-center text-white shadow-lg shadow-[#8C1C3F]/30">
+              <Sparkles className="w-7 h-7" />
+            </div>
+            <h1 className="font-serif text-3xl font-semibold tracking-tight text-white lg:text-slate-900">
+              {APP_NAME}
+            </h1>
+            <p className="text-xs font-medium mt-1.5 text-white/70 lg:text-slate-500">
+              Enterprise Administration &amp; Safety Console
+            </p>
+          </div>
+
+          {/* Login Card */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-2xl shadow-[#2b0c16]/20 border border-white/70">
           <form onSubmit={challengeToken ? handleVerifyTwoFactor : handleSubmit} className="space-y-4">
             <AnimatePresence mode="wait">
               {(error || localError) && (
@@ -315,12 +342,13 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-        </div>
+          </div>
 
-        <p className="text-center text-slate-400 text-xs font-medium mt-6">
-          Encrypted 256-Bit SSL Administrative Access
-        </p>
-      </motion.div>
+          <p className="text-center text-xs font-medium mt-6 text-white/70 lg:text-slate-500">
+            Encrypted 256-Bit SSL Administrative Access
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }

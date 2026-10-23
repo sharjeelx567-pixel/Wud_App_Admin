@@ -10,6 +10,7 @@ import StatCard from "../../components/dashboard/StatCard";
 import GrowthChart from "../../components/dashboard/GrowthChart";
 import ActivityFeed from "../../components/dashboard/ActivityFeed";
 import UserAvatar from "../../components/common/UserAvatar";
+import { APP_NAME } from "../../config/branding";
 import {
   Users,
   Image as ImageIcon,
@@ -152,6 +153,25 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* 0. Elegant wedding hero banner */}
+      <div
+        className="relative overflow-hidden rounded-3xl border border-slate-200/70 shadow-sm min-h-[150px] sm:min-h-[180px] flex items-center bg-cover bg-center"
+        style={{ backgroundImage: "url('/wedding-hero.jpg')" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-[#2b0c16]/95 via-[#2b0c16]/70 to-[#2b0c16]/20" />
+        <div className="relative z-10 p-7 sm:p-10 text-white">
+          <p className="text-white/70 text-[11px] font-bold uppercase tracking-[0.18em] mb-2">
+            {APP_NAME} · Admin Console
+          </p>
+          <h1 className="font-serif text-3xl sm:text-4xl font-semibold leading-tight max-w-xl">
+            Guiding meaningful nikahs, every day.
+          </h1>
+          <p className="text-white/75 text-sm mt-2.5 max-w-md">
+            A real-time overview of profiles, matches, verifications and platform health.
+          </p>
+        </div>
+      </div>
+
       {/* 1. Stat Cards Metric Grid */}
       {canViewAnalytics && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

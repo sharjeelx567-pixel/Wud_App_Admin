@@ -70,6 +70,7 @@ module.exports = {
       fontFamily: {
         sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "Outfit", "sans-serif"],
+        serif: ["var(--font-serif)", "Playfair Display", "Georgia", "serif"],
       },
       boxShadow: {
         'xs': "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
