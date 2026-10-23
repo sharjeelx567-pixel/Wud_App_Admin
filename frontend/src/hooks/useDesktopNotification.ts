@@ -32,11 +32,27 @@ export function useDesktopNotification(count: number, title: string = 'New Notif
           icon: '/favicon.ico',
         });
 
+        // Soft chime synthesized via the Web Audio API — no asset to 404 on
+        // (/notification.mp3 never existed), and it needs no network request.
         try {
-          const audio = new Audio('/notification.mp3');
-          audio.play().catch(() => {});
+          const AudioCtx =
+            window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx) {
+            const ctx = new AudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.setValueAtTime(1175, ctx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.14, ctx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.42);
+          }
         } catch {
-          // Ignore audio errors
+          // Autoplay policy / unsupported — a chime is optional, ignore.
         }
 
         setTimeout(() => notification.close(), 5000);
