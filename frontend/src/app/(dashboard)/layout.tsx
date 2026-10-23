@@ -105,7 +105,7 @@ export default function DashboardLayout({
 
         {/* Dynamic Nested Page Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar">
-          <div className="max-w-7xl mx-auto w-full">
+          <div className="max-w-[1760px] mx-auto w-full">
             {children}
           </div>
         </main>

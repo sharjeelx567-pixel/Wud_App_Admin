@@ -54,6 +54,11 @@ html.dark {
 @layer base {
   html {
     color-scheme: light;
+    /* The console was built very compact (text-xs/11px everywhere), which read
+       as cramped and unprofessional. Nudging the root size up scales every
+       rem-based font + spacing ~8% for a larger, more spacious, premium feel
+       without touching each screen. */
+    font-size: 17.5px;
   }
   html.dark {
     color-scheme: dark;
