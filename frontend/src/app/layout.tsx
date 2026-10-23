@@ -38,11 +38,12 @@ export default function RootLayout({
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
         {/* No-flash theme: apply the saved choice before first paint. Defaults
-            to the premium dark theme unless the viewer has chosen light. */}
+            to the clean, fully-readable LIGHT theme; dark is opt-in via the
+            top-bar toggle (only applied when the viewer explicitly chose it). */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var t=localStorage.getItem('wud-theme');if(t!=='light'){document.documentElement.classList.add('dark');}}catch(e){}})();",
+              "(function(){try{var t=localStorage.getItem('wud-theme');if(t==='dark'){document.documentElement.classList.add('dark');}}catch(e){}})();",
           }}
         />
       </head>
