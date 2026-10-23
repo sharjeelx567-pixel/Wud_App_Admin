@@ -157,21 +157,21 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* 0. Elegant wedding hero banner */}
       <div
-        className="relative overflow-hidden rounded-3xl border border-slate-200/70 shadow-sm min-h-[150px] sm:min-h-[180px] flex items-center bg-cover bg-center"
+        className="relative overflow-hidden rounded-3xl border border-slate-200/70 shadow-sm min-h-[190px] sm:min-h-[230px] flex items-center bg-cover bg-center"
         style={{ backgroundImage: "url('/wedding-hero.jpg')" }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-[#2b0c16]/95 via-[#2b0c16]/70 to-[#2b0c16]/20" />
-        <div className="relative z-10 p-7 sm:p-10 text-white">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="h-px w-8 bg-[#D4AF37]" />
-            <p className="text-[#EBCB72] text-[11px] font-bold uppercase tracking-[0.18em]">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#2b0c16]/95 via-[#2b0c16]/72 to-[#2b0c16]/20" />
+        <div className="relative z-10 p-8 sm:p-12 text-white">
+          <div className="flex items-center gap-3 mb-3.5">
+            <span className="h-px w-10 bg-[#D4AF37]" />
+            <p className="text-[#EBCB72] text-xs font-bold uppercase tracking-[0.2em]">
               {APP_NAME} · Admin Console
             </p>
           </div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-semibold leading-tight max-w-xl">
+          <h1 className="font-serif text-4xl sm:text-5xl font-semibold leading-[1.1] max-w-2xl">
             Welcome back, <span className="italic text-[#F3D573]">{firstName}</span>
           </h1>
-          <p className="text-white/75 text-sm mt-2.5 max-w-md">
+          <p className="text-white/80 text-base mt-3 max-w-lg">
             Guiding meaningful nikahs today — profiles, matches, verifications and platform
             health, all at a glance.
           </p>

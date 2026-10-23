@@ -37,12 +37,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
-        {/* No-flash theme: apply the saved choice before first paint so there
-            is no light→dark flicker. Defaults to light when nothing is saved. */}
+        {/* No-flash theme: apply the saved choice before first paint. Defaults
+            to the premium dark theme unless the viewer has chosen light. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var t=localStorage.getItem('wud-theme');if(t==='dark'){document.documentElement.classList.add('dark');}}catch(e){}})();",
+              "(function(){try{var t=localStorage.getItem('wud-theme');if(t!=='light'){document.documentElement.classList.add('dark');}}catch(e){}})();",
           }}
         />
       </head>

@@ -65,27 +65,28 @@ export default function StatCard({
   const theme = getTheme();
 
   return (
-    <div className="group relative overflow-hidden bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between">
+    <div className="group relative overflow-hidden bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between">
       {/* Soft corner glow in the card's accent colour */}
       <div
-        className="pointer-events-none absolute -top-12 -right-12 w-36 h-36 rounded-full blur-2xl opacity-70 transition-opacity duration-300 group-hover:opacity-100"
+        className="pointer-events-none absolute -top-14 -right-14 w-44 h-44 rounded-full blur-2xl opacity-70 transition-opacity duration-300 group-hover:opacity-100"
         style={{ background: `radial-gradient(circle, ${theme.glow}, transparent 70%)` }}
       />
 
       <div className="relative flex items-start justify-between">
         <div className="min-w-0">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
             {title}
           </span>
-          <h3 className="text-2xl font-bold font-display text-slate-900 mt-1.5 tracking-tight">
+          <h3 className="text-4xl font-extrabold font-display text-slate-900 mt-2 tracking-tight">
             {isNumeric ? <AnimatedCounter endValue={value as number} /> : value}
           </h3>
         </div>
 
         <div
-          className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white bg-gradient-to-br shadow-lg ${theme.grad} ${theme.shadow} transition-transform duration-300 group-hover:scale-105`}
+          className={`w-13 h-13 rounded-2xl flex items-center justify-center flex-shrink-0 text-white bg-gradient-to-br shadow-lg ${theme.grad} ${theme.shadow} transition-transform duration-300 group-hover:scale-105`}
+          style={{ width: "3.25rem", height: "3.25rem" }}
         >
-          <Icon className="w-5 h-5" />
+          <Icon className="w-6 h-6" />
         </div>
       </div>
 
