@@ -6,8 +6,9 @@ export type AdminRole =
   | 'moderator' 
   | 'verification_staff' 
   | 'support_staff' 
-  | 'content_moderator' 
-  | 'analyst';
+  | 'content_moderator'
+  | 'analyst'
+  | 'coach';
 
 export type AdminPermission =
   | '*'
@@ -50,7 +51,10 @@ export type AdminPermission =
   | 'settings.view'
   | 'settings.manage'
   | 'posts.view'
-  | 'posts.manage';
+  | 'posts.manage'
+  | 'coach.chat'
+  | 'family.view'
+  | 'family.manage';
 
 export const ALL_ADMIN_PERMISSIONS: AdminPermission[] = [
   'users.view',
@@ -93,6 +97,9 @@ export const ALL_ADMIN_PERMISSIONS: AdminPermission[] = [
   'settings.manage',
   'posts.view',
   'posts.manage',
+  'coach.chat',
+  'family.view',
+  'family.manage',
 ];
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
@@ -130,6 +137,8 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'settings.view',
     'posts.view',
     'posts.manage',
+    'family.view',
+    'family.manage',
   ],
   moderator: [
     'users.view',
@@ -144,6 +153,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'audit_logs.view',
     'posts.view',
     'posts.manage',
+    'family.view',
   ],
   verification_staff: [
     'verification.view',
@@ -182,6 +192,11 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'reports.view',
     'connections.view',
     'subscriptions.view',
+  ],
+  // Marriage Coach: a restricted account that only ever sees its own
+  // assigned chat threads (coach_sessions assigned to this coach's uid).
+  coach: [
+    'coach.chat',
   ],
 };
 
@@ -260,7 +275,7 @@ export interface AuditLog {
   adminEmail: string;
   action: string;
   targetId: string;
-  targetType: 'user' | 'photo' | 'verification' | 'report' | 'setting' | 'admin' | 'legal_document' | 'notification' | 'post' | 'comment' | 'community';
+  targetType: 'user' | 'photo' | 'verification' | 'report' | 'setting' | 'admin' | 'legal_document' | 'notification' | 'post' | 'comment' | 'community' | 'family';
   details: Record<string, unknown>;
   timestamp: FirebaseFirestore.Timestamp | Date | FirebaseFirestore.FieldValue;
   ip: string;

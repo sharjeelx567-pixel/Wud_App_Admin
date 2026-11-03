@@ -39,7 +39,14 @@ const ROLE_HINTS: { id: AdminRole; label: string }[] = [
   { id: "support_staff", label: "Support Staff" },
   { id: "content_moderator", label: "Content Moderator" },
   { id: "analyst", label: "Analyst" },
+  { id: "coach", label: "Marriage Coach" },
 ];
+
+// A coach only ever uses its chats page, so it lands there after login instead
+// of the Dashboard (which it has no permission to see).
+function landingFor(role?: string): string {
+  return role === "coach" ? "/coach-chats" : "/";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -98,7 +105,7 @@ export default function LoginPage() {
       const result = await login(email.trim(), password, rememberMe);
       if (result.status === "success") {
         if (enforceRoleSelectionMatches()) {
-          router.replace("/");
+          router.replace(landingFor(useAuthStore.getState().admin?.role));
         }
       }
       // "2fa_required" falls through: the store now holds a challenge token and
@@ -128,7 +135,7 @@ export default function LoginPage() {
       if (ok) {
         setTwoFactorCode("");
         if (enforceRoleSelectionMatches()) {
-          router.replace("/");
+          router.replace(landingFor(useAuthStore.getState().admin?.role));
         }
       }
     } finally {

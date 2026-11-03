@@ -17,7 +17,8 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, admin } = useAuthStore();
+  const isCoach = admin?.role === "coach";
 
   // Mobile slide-in nav drawer (desktop keeps the fixed sidebar).
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -34,6 +35,14 @@ export default function DashboardLayout({
     }
   }, [isAuthenticated, isLoading, router]);
 
+  // A coach may only ever be on its own chats page — bounce it back from any
+  // other route it tries to reach directly.
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && isCoach && pathname !== "/coach-chats") {
+      router.replace("/coach-chats");
+    }
+  }, [isAuthenticated, isLoading, isCoach, pathname, router]);
+
   // Fetch real-time pending notification counts for the sidebar badges
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: ["dashboard-stats-badges"],
@@ -41,7 +50,7 @@ export default function DashboardLayout({
       const response = await api.get("/analytics/stats");
       return response.data.data;
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !isCoach,
     refetchInterval: 10000,
   });
 
@@ -51,7 +60,7 @@ export default function DashboardLayout({
       const response = await api.get("/support/tickets/unread-count");
       return response.data.data.count;
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !isCoach,
     refetchInterval: 5000,
   });
 

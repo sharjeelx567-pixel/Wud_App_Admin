@@ -14,6 +14,7 @@ const ALLOWED_ADMIN_ROLES: AdminRole[] = [
   'support_staff',
   'content_moderator',
   'analyst',
+  'coach',
 ];
 
 export async function getRolesAndPermissions(_req: Request, res: Response): Promise<void> {

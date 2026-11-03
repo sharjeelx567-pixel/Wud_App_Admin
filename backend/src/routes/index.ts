@@ -19,6 +19,7 @@ import familyRoutes from './family.routes';
 import chatModerationRoutes from './chatModeration.routes';
 import postsRoutes from './posts.routes';
 import communityPostsRoutes from './community-posts.routes';
+import coachRoutes from './coach.routes';
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use('/family', familyRoutes);
 router.use('/chat-moderation', chatModerationRoutes);
 router.use('/posts', postsRoutes);
 router.use('/community-posts', communityPostsRoutes);
+router.use('/coach', coachRoutes);
 
 export default router;

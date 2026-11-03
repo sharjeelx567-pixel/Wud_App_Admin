@@ -7,7 +7,8 @@ export type AdminRole =
   | 'verification_staff'
   | 'support_staff'
   | 'content_moderator'
-  | 'analyst';
+  | 'analyst'
+  | 'coach';
 
 export type AdminPermission =
   | '*'
@@ -50,7 +51,10 @@ export type AdminPermission =
   | 'settings.view'
   | 'settings.manage'
   | 'posts.view'
-  | 'posts.manage';
+  | 'posts.manage'
+  | 'coach.chat'
+  | 'family.view'
+  | 'family.manage';
 
 export const ALL_ADMIN_PERMISSIONS: AdminPermission[] = [
   'users.view',
@@ -93,6 +97,8 @@ export const ALL_ADMIN_PERMISSIONS: AdminPermission[] = [
   'settings.manage',
   'posts.view',
   'posts.manage',
+  'family.view',
+  'family.manage',
 ];
 
 export interface Admin {

@@ -14,6 +14,7 @@ interface Transaction {
   amount: number;
   paymentMethod?: string;
   planId?: string;
+  itemType?: string;
   type?: string;
   status: "completed" | "refunded" | "failed" | string;
   isRenewal?: boolean;
@@ -26,6 +27,37 @@ interface Transaction {
 interface SubscriptionMetrics {
   activePremiumCount: number;
   monthlyRevenue: number;
+}
+
+// In-app item purchases (Test Payment / future XPay) carry an `itemType`, not a
+// `planId`, so the Plan column would otherwise show "—" and hide WHAT was
+// bought (coach session, istikhara, boost…). Map the known types to labels and
+// prettify anything new as a fallback.
+const ITEM_LABELS: Record<string, string> = {
+  coach_session: "Marriage Coach",
+  coach_chat: "Coach Chat (Continue)",
+  family_access: "Family / Wali Access",
+  istikhara: "Istikhara Report",
+  human_video: "Human Video Verification",
+  verification: "Full Verification",
+  confirmed_single: "Confirmed Single",
+  profile_boost: "Profile Boost",
+  rishta_boost: "Rishta Boost",
+  biodata_pdf: "Biodata PDF",
+  chat_archive: "Chat Archive",
+  chat_renewal: "Chat Renewal",
+  family_room: "Parents Web Room",
+};
+
+function planLabel(tx: Transaction): string {
+  if (tx.planId) return tx.planId;
+  if (tx.itemType) {
+    return (
+      ITEM_LABELS[tx.itemType] ||
+      tx.itemType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    );
+  }
+  return "—";
 }
 
 function formatDate(raw: Transaction["timestamp"]) {
@@ -178,7 +210,7 @@ export default function PremiumPage() {
                       <p className="font-bold text-slate-900">{tx.userName || "Unknown"}</p>
                       <p className="text-[11px] text-slate-400">{tx.userEmail || tx.userId}</p>
                     </td>
-                    <td className="px-6 py-4 capitalize">{tx.planId || "—"}</td>
+                    <td className="px-6 py-4 capitalize">{planLabel(tx)}</td>
                     <td className="px-6 py-4 font-bold text-slate-900">PKR {(tx.amount || 0).toLocaleString()}</td>
                     <td className="px-6 py-4 capitalize text-slate-500">
                       <div className="flex items-center gap-1.5">

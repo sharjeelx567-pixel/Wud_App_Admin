@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   LifeBuoy,
   CreditCard,
+  GraduationCap,
   Bell,
   Settings,
   Shield,
@@ -27,7 +28,8 @@ import {
   HeartHandshake,
   Radio,
   FileText,
-  X
+  X,
+  UsersRound,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -93,7 +95,10 @@ export default function Sidebar({ pendingCounts, mobileOpen = false, onClose }: 
       items: [
         { name: "Connections", href: "/connections", icon: HeartHandshake, permission: "connections.view" },
         { name: "Chat Moderation", href: "/chats", icon: MessageSquare, permission: "chat_moderation.view" },
+        { name: "Family & Wali", href: "/family", icon: UsersRound, permission: "family.view" },
         { name: "Premium Plans", href: "/premium", icon: CreditCard, permission: "subscriptions.view" },
+        { name: "Marriage Coach", href: "/coach", icon: GraduationCap, permission: "subscriptions.view" },
+        { name: "Coach Chats", href: "/coach-chats", icon: MessageSquare, permission: "coach.chat" },
         { name: "Notifications", href: "/notifications", icon: Bell, permission: "notifications.view" },
         { name: "App Content", href: "/content", icon: FileText, permission: "content.view" },
       ],
@@ -108,6 +113,18 @@ export default function Sidebar({ pendingCounts, mobileOpen = false, onClose }: 
       ],
     },
   ];
+
+  // A Marriage Coach is a restricted account: it must see ONLY its own chats,
+  // never the rest of the console. Replace the whole menu for that role.
+  const coachMenu: MenuSection[] = [
+    {
+      title: "Coaching",
+      items: [
+        { name: "My Chats", href: "/coach-chats", icon: MessageSquare, permission: "coach.chat" },
+      ],
+    },
+  ];
+  const sections = admin?.role === "coach" ? coachMenu : menuSections;
 
   return (
     <motion.aside
@@ -163,7 +180,7 @@ export default function Sidebar({ pendingCounts, mobileOpen = false, onClose }: 
 
       {/* Navigation List */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5 custom-scrollbar">
-        {menuSections.map((section, sIdx) => {
+        {sections.map((section, sIdx) => {
           const visibleItems = section.items.filter((item) => {
             if (!item.permission) return true;
             return hasPermission(item.permission);
