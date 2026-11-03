@@ -11,6 +11,8 @@ import {
   revokeChaperone,
   listMaritalPreferences,
   resetMaritalFlag,
+  listFamilyRooms,
+  closeFamilyRoom,
 } from '../controllers/familyManagement.controller';
 import { authenticate, requirePermission } from '../middlewares/auth.middleware';
 
@@ -35,5 +37,7 @@ router.get('/chaperones', requirePermission('family.view'), listChaperones);
 router.post('/chaperones/:id/revoke', requirePermission('family.manage'), revokeChaperone);
 router.get('/marital', requirePermission('family.view'), listMaritalPreferences);
 router.post('/marital/:uid/reset', requirePermission('family.manage'), resetMaritalFlag);
+router.get('/rooms', requirePermission('family.view'), listFamilyRooms);
+router.post('/rooms/:id/close', requirePermission('family.manage'), closeFamilyRoom);
 
 export default router;

@@ -101,6 +101,31 @@ async function suspendedGroupIds(): Promise<Set<string>> {
   return new Set(snap.docs.map((d) => d.id));
 }
 
+
+function inRemarriagePool(u: FirebaseFirestore.DocumentData): boolean {
+  if (u.previouslyMarried === true) return true;
+  const st = String(u.maritalStatus ?? '').toLowerCase();
+  return ['divorc', 'widow', 'separated', 'khula'].some((k) => st.includes(k));
+}
+
+function disclosed(u: FirebaseFirestore.DocumentData): boolean {
+  return String(u.currentMarriageDeclaration ?? '').trim().length >= 10;
+}
+
+/** Mirrors functions/src/family/familyLinks.ts syncManagedByFamily. */
+async function syncManagedByFamily(candidateId: string): Promise<void> {
+  if (!candidateId) return;
+  const [links, accounts] = await Promise.all([
+    db.collection('family_links').where('principalId', '==', candidateId).get(),
+    db.collection('family_accounts').where('candidateId', '==', candidateId).get(),
+  ]);
+  const managerIds = links.docs.map((x) => x.data())
+    .filter((l) => l.kind === 'candidate' && l.status === 'accepted').map((l) => l.memberId as string);
+  const claimed = accounts.docs.some((x) => x.data().status === 'claimed');
+  await db.collection('users').doc(candidateId).set(
+    { managedByFamily: managerIds.length > 0 || claimed, familyManagerIds: managerIds }, { merge: true });
+}
+
 // ─── Stats ───────────────────────────────────────────────────────────────────
 
 export async function getFamilyStats(_req: Request, res: Response): Promise<void> {
@@ -135,6 +160,11 @@ export async function getFamilyStats(_req: Request, res: Response): Promise<void
       count(users.where('previouslyMarried', '==', true)),
       count(db.collection('chaperone_flags').where('status', '==', 'flagged')),
     ]);
+    const [roomsActive, roomsTotal, chReadWrite] = await Promise.all([
+      count(db.collection('family_chat_rooms').where('active', '==', true)),
+      count(db.collection('family_chat_rooms')),
+      count(chap.where('canWrite', '==', true)),
+    ]);
 
     res.json(successResponse({
       groups: { total: groupsTotal, suspended: groupsSuspended, active: groupsTotal - groupsSuspended },
@@ -144,6 +174,8 @@ export async function getFamilyStats(_req: Request, res: Response): Promise<void
       chaperones: { pending: chPending, active: chActive, rejected: chDeclined, ended: chEnded, revoked: chRevoked },
       marital: { polySeekers, openPoly, remarriagePool, openRemarriage, previouslyMarried },
       chaperoneReportsOpen: flagsOpen,
+      rooms: { active: roomsActive, total: roomsTotal },
+      chaperoneReadWrite: chReadWrite,
     }));
   } catch (error) {
     console.error('[FamilyAdmin] stats error:', error);
@@ -336,6 +368,7 @@ export async function revokeFamilyLink(req: Request, res: Response): Promise<voi
       }
     }
     await batch.commit();
+    if (d.kind === 'candidate') await syncManagedByFamily(d.principalId);
 
     await audit(req, 'REVOKE_FAMILY_LINK', id, {
       reason, kind: d.kind, role: d.role, previousStatus: d.status,
@@ -372,6 +405,10 @@ export async function listChaperones(req: Request, res: Response): Promise<void>
           // Consent: requester asked; the partner must approve.
           ownerConsent: true,
           partnerConsent: d.status === 'active' ? 'approved' : d.status === 'declined' ? 'declined' : d.status === 'pending' ? 'awaiting' : 'n/a',
+          // Wali Chat Permission: Read Only unless BOTH participants allowed writing.
+          permission: d.canWrite === true ? 'read_write' : 'read_only',
+          ownerAllowsWrite: d.writeApprovals?.[d.ownerId] === true,
+          partnerAllowsWrite: d.writeApprovals?.[d.partnerId] === true,
           createdAtMs: ms(d.createdAt),
           respondedAtMs: ms(d.respondedAt),
           endedAtMs: ms(d.endedAt ?? d.revokedAt),
@@ -417,6 +454,71 @@ export async function revokeChaperone(req: Request, res: Response): Promise<void
   }
 }
 
+// ─── Family Rooms (24h, code based) ─────────────────────────────────────────
+
+function roomStatus(d: FirebaseFirestore.DocumentData): string {
+  if (d.closedByAdmin) return 'revoked';
+  if (d.endedBy) return 'ended';
+  const exp = ms(d.expiresAt) ?? 0;
+  return d.active === true && exp > Date.now() ? 'active' : 'expired';
+}
+
+/** Room metadata only — never the 6-digit code and never the messages. */
+export async function listFamilyRooms(req: Request, res: Response): Promise<void> {
+  try {
+    const search = String(req.query.search ?? '').trim().toLowerCase();
+    const status = String(req.query.status ?? 'all').toLowerCase();
+    const snap = await db.collection('family_chat_rooms').limit(MAX_SCAN).get();
+    const items = snap.docs.map((r) => {
+      const d = r.data();
+      const parts: string[] = Array.isArray(d.participants) ? d.participants : [];
+      return {
+        id: r.id,
+        chatId: d.chatId ?? null,
+        creatorId: d.creatorId ?? null,
+        creatorName: d.creatorName ?? 'Member',
+        partnerId: parts.find((p) => p !== d.creatorId) ?? null,
+        viewerCount: Array.isArray(d.viewerIds) ? d.viewerIds.length : 0,
+        status: roomStatus(d),
+        createdAtMs: ms(d.createdAt),
+        expiresAtMs: ms(d.expiresAt),
+        renewedAtMs: ms(d.lastRenewedAt),
+      };
+    })
+      .filter((r) => status === 'all' || r.status === status)
+      .filter((r) => matches(search, r.creatorName, r.creatorId, r.partnerId, r.id))
+      .sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0));
+    res.json(successResponse(paginate(items, req.query)));
+  } catch (error) {
+    console.error('[FamilyAdmin] rooms error:', error);
+    res.status(500).json(errorResponse('Failed to load family rooms'));
+  }
+}
+
+export async function closeFamilyRoom(req: Request, res: Response): Promise<void> {
+  try {
+    const id = String(req.params.id);
+    const reason = reasonOf(req);
+    if (!reason) { res.status(400).json(errorResponse('A reason is required')); return; }
+    const ref = db.collection('family_chat_rooms').doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) { res.status(404).json(errorResponse('Room not found')); return; }
+    const d = doc.data()!;
+    if (roomStatus(d) !== 'active') { res.status(400).json(errorResponse('This room is not active')); return; }
+    await ref.update({
+      active: false, endedBy: 'admin:' + req.admin!.uid, closedByAdmin: req.admin!.uid,
+      closeReason: reason, endedAt: FieldValue.serverTimestamp(),
+    });
+    await audit(req, 'CLOSE_FAMILY_ROOM', id, { reason, chatId: d.chatId, creatorId: d.creatorId });
+    await notifyUsers([...(d.participants ?? []), ...(d.viewerIds ?? [])], 'Family Room closed',
+      'An administrator closed a Family Room for safety reasons.');
+    res.json(successResponse(null, 'Room closed'));
+  } catch (error) {
+    console.error('[FamilyAdmin] close room error:', error);
+    res.status(500).json(errorResponse('Failed to close room'));
+  }
+}
+
 // ─── Remarriage & Polygamy ───────────────────────────────────────────────────
 
 const MARITAL_FLAGS = ['isPolygamySeeker', 'openToPolygamy', 'remarriageMatchingPool', 'openToRemarriage', 'previouslyMarried'] as const;
@@ -444,10 +546,13 @@ export async function listMaritalPreferences(req: Request, res: Response): Promi
         maritalStatus: d.maritalStatus ?? null,
         openToMaritalStatuses: Array.isArray(d.openToMaritalStatuses) ? d.openToMaritalStatuses : [],
         flags: Object.fromEntries(MARITAL_FLAGS.map((f) => [f, d[f] === true])) as Record<MaritalFlag, boolean>,
+        // Same pool rule as functions/src/matching/poolRules.ts.
+        pool: inRemarriagePool(d) ? 'remarriage' : 'first_marriage',
+        polygamyDisclosed: d.isPolygamySeeker === true ? disclosed(d) : null,
         issue: d.isPolygamySeeker === true && gender.toLowerCase() === 'female'
           ? 'Polygamy-seeker flag set on a female profile'
-          : (d.remarriageMatchingPool === true && d.previouslyMarried !== true && d.openToRemarriage !== true
-            ? 'In remarriage-only pool but not previously married'
+          : (d.isPolygamySeeker === true && !disclosed(d)
+            ? 'Polygamy seeker without current-marriage disclosure (hidden from discovery)'
             : null),
         accountStatus: d.isBanned ? 'banned' : (d.isSuspended ? 'suspended' : 'active'),
       };

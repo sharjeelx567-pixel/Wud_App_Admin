@@ -22,6 +22,13 @@ interface FamilyStats {
   chaperones: Record<string, number>;
   marital: { polySeekers: number; openPoly: number; remarriagePool: number; openRemarriage: number; previouslyMarried: number };
   chaperoneReportsOpen: number;
+  rooms?: { active: number; total: number };
+  chaperoneReadWrite?: number;
+}
+
+interface RoomRow {
+  id: string; chatId: string | null; creatorId: string | null; creatorName: string; partnerId: string | null;
+  viewerCount: number; status: string; createdAtMs: number | null; expiresAtMs: number | null; renewedAtMs: number | null;
 }
 
 interface GroupRow {
@@ -38,7 +45,7 @@ interface GroupDetail {
 interface LinkRow {
   id: string; kind: string; role: string; status: string; inviterName: string; inviteeName: string;
   inviterId: string; inviteeId: string; principalId: string; memberId: string;
-  permissions: { profile: boolean; preferences: boolean; contact: boolean; editBasics: boolean };
+  permissions: { profile: boolean; preferences: boolean; contact: boolean; editBasics: boolean; matchmaking?: boolean; viewChats?: boolean };
   consent: string; createdAtMs: number | null; respondedAtMs: number | null; endedAtMs: number | null;
   revokeReason: string | null;
 }
@@ -47,11 +54,13 @@ interface ChaperoneRow {
   id: string; chatId: string; role: string; status: string; ownerName: string; partnerName: string;
   chaperoneName: string; partnerConsent: string; createdAtMs: number | null; respondedAtMs: number | null;
   endedAtMs: number | null;
+  permission?: "read_only" | "read_write"; ownerAllowsWrite?: boolean; partnerAllowsWrite?: boolean;
 }
 
 interface MaritalRow {
   uid: string; displayName: string; username: string | null; gender: string; maritalStatus: string | null;
   flags: Record<string, boolean>; issue: string | null; accountStatus: string;
+  pool?: "remarriage" | "first_marriage"; polygamyDisclosed?: boolean | null;
 }
 
 interface FlagRow {
@@ -59,7 +68,7 @@ interface FlagRow {
   messageContent: string; createdAt?: { _seconds?: number };
 }
 
-type Tab = "groups" | "access" | "chaperones" | "candidates" | "marital" | "reports";
+type Tab = "groups" | "access" | "chaperones" | "candidates" | "rooms" | "marital" | "reports";
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 
@@ -86,7 +95,11 @@ function Badge({ status }: { status: string }) {
 function PermChips({ p, showEdit }: { p: LinkRow["permissions"]; showEdit?: boolean }) {
   const items: [string, boolean][] = [
     ["Profile", p.profile], ["Preferences", p.preferences], ["Contact", p.contact],
-    ...(showEdit ? [["Edit basics", p.editBasics] as [string, boolean]] : []),
+    ...(showEdit ? [
+      ["Edit basics", p.editBasics] as [string, boolean],
+      ["Matchmaking", p.matchmaking === true] as [string, boolean],
+      ["Chats (read only)", p.viewChats === true] as [string, boolean],
+    ] : []),
   ];
   return (
     <div className="flex flex-wrap gap-1">
@@ -450,7 +463,13 @@ function ChaperonesSection({ canManage }: { canManage: boolean }) {
                       {c.partnerConsent === "approved" ? "✓" : c.partnerConsent === "awaiting" ? "…" : "✗"} {c.partnerName} {c.partnerConsent}
                     </p>
                   </td>
-                  <td className={TD}><Badge status={c.status} /></td>
+                  <td className={TD}>
+                    <Badge status={c.status} />
+                    <p className={`mt-1 text-[10px] font-bold ${c.permission === "read_write" ? "text-orange-700" : "text-slate-500"}`}>
+                      {c.permission === "read_write" ? "Read & Write" : "Read only"}
+                    </p>
+                    <p className="text-[10px] text-slate-400">write ok: {c.ownerName} {c.ownerAllowsWrite ? "✓" : "✗"} · {c.partnerName} {c.partnerAllowsWrite ? "✓" : "✗"}</p>
+                  </td>
                   <td className={`${TD} text-[10px] text-slate-500 whitespace-nowrap`}>
                     <p>Requested {fmt(c.createdAtMs)}</p>
                     {c.respondedAtMs && <p>Answered {fmt(c.respondedAtMs)}</p>}
@@ -475,6 +494,65 @@ function ChaperonesSection({ canManage }: { canManage: boolean }) {
           title={`Remove ${target.chaperoneName} from this chat?`}
           body="Their access to the conversation ends immediately and all three people are notified."
           actionLabel="Remove chaperone"
+          busy={mutation.isPending}
+          onClose={() => setTarget(null)}
+          onConfirm={(reason) => mutation.mutate({ id: target.id, reason })}
+        />
+      )}
+    </Card>
+  );
+}
+
+function RoomsSection({ canManage }: { canManage: boolean }) {
+  const qc = useQueryClient();
+  const { search, setSearch, status, setStatus, page, setPage, query } =
+    usePagedList<RoomRow>("rooms", "/family/rooms", {}, "all");
+  const [target, setTarget] = useState<RoomRow | null>(null);
+  const mutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api.post(`/family/rooms/${id}/close`, { reason }),
+    onSuccess: () => { setTarget(null); qc.invalidateQueries({ queryKey: ["family-admin"] }); },
+  });
+  const data = query.data;
+  return (
+    <Card title="Family Group Chat Rooms" subtitle="24-hour rooms family members join with a 6-digit code in the app. Admins see status only — never the code or the conversation." icon={Users}>
+      <Toolbar search={search} setSearch={setSearch} status={status} setStatus={setStatus}
+        statuses={["all", "active", "expired", "ended", "revoked"]} placeholder="Search by creator or user id…" />
+      {query.isLoading ? <Loading /> : !data || data.items.length === 0 ? <Empty text="No family rooms found." /> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50/80 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
+              <tr><th className={TH}>Creator</th><th className={TH}>Family joined</th><th className={TH}>Status</th><th className={TH}>Dates</th><th className={TH}></th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.items.map((r) => (
+                <tr key={r.id}>
+                  <td className={TD}><p className="font-bold text-slate-800">{r.creatorName}</p><p className="text-[10px] text-slate-400 flex items-center gap-1"><Lock className="w-3 h-3" /> code &amp; messages hidden</p></td>
+                  <td className={TD}>{r.viewerCount}</td>
+                  <td className={TD}><Badge status={r.status} /></td>
+                  <td className={`${TD} text-[10px] text-slate-500 whitespace-nowrap`}>
+                    <p>Opened {fmt(r.createdAtMs)}</p>
+                    <p>Expires {fmt(r.expiresAtMs)}</p>
+                    {r.renewedAtMs && <p>Renewed {fmt(r.renewedAtMs)}</p>}
+                  </td>
+                  <td className={`${TD} text-right`}>
+                    {canManage && r.status === "active" && (
+                      <button onClick={() => setTarget(r)} className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-600 border border-rose-200 rounded-lg whitespace-nowrap">
+                        <Ban className="w-3 h-3" /> Close
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data && <Pager page={page} total={data.total} limit={data.limit} setPage={setPage} />}
+      {target && (
+        <ReasonModal
+          title={`Close ${target.creatorName}'s Family Room?`}
+          body="The code stops working immediately. The two chat participants and every family member who joined are notified."
+          actionLabel="Close room"
           busy={mutation.isPending}
           onClose={() => setTarget(null)}
           onConfirm={(reason) => mutation.mutate({ id: target.id, reason })}
@@ -534,7 +612,12 @@ function MaritalSection({ canManage }: { canManage: boolean }) {
                 <tr key={u.uid}>
                   <td className={TD}><p className="font-bold text-slate-800">{u.displayName}</p><p className="text-[10px] text-slate-400">{u.username ? `@${u.username}` : u.uid}</p>{u.issue && <p className="text-[10px] text-orange-600 font-semibold mt-1">⚠ {u.issue}</p>}</td>
                   <td className={TD}>{u.gender || "—"}</td>
-                  <td className={TD}>{u.maritalStatus || "—"}</td>
+                  <td className={TD}>
+                    {u.maritalStatus || "—"}
+                    <p className="text-[10px] text-slate-400">{u.pool === "remarriage" ? "Remarriage pool" : "First-marriage pool"}</p>
+                    {u.polygamyDisclosed === true && <p className="text-[10px] text-emerald-700 font-semibold">Marriage disclosed</p>}
+                    {u.polygamyDisclosed === false && <p className="text-[10px] text-orange-600 font-semibold">No disclosure — hidden</p>}
+                  </td>
                   <td className={TD}>
                     <div className="flex flex-wrap gap-1">
                       {MARITAL_FILTERS.slice(0, 5).map(([k, label]) => u.flags[k] && (
@@ -629,6 +712,7 @@ export default function FamilyManagementPage() {
     ["access", "Family / Wali Access"],
     ["chaperones", "Chaperone / Wali"],
     ["candidates", "Family Candidates"],
+    ["rooms", "Family Rooms (24h)"],
     ["marital", "Remarriage & Polygamy"],
     ...(canViewReports ? [["reports", "Chaperone Reports"] as [Tab, string]] : []),
   ];
@@ -641,7 +725,7 @@ export default function FamilyManagementPage() {
         <StatCard title="Wali / Family Access" value={v(stats?.access?.active)} icon={ShieldCheck}
           description={`${v(stats?.access?.pending)} pending · ${v(stats?.access?.revoked)} revoked`} colorTheme="accent" />
         <StatCard title="Active Chaperones" value={v(stats?.chaperones?.active)} icon={Shield}
-          description={`${v(stats?.chaperones?.pending)} awaiting consent`} colorTheme="success" />
+          description={`${v(stats?.chaperones?.pending)} awaiting consent · ${v(stats?.chaperoneReadWrite)} read & write · ${v(stats?.rooms?.active)} rooms live`} colorTheme="success" />
         <StatCard title="Managed Candidates" value={v(stats?.candidates?.active)} icon={UserCog}
           description={`${v(stats?.candidates?.pending)} awaiting consent`} colorTheme="secondary" />
         <StatCard title="Polygamy / Remarriage" value={v(stats?.marital.polySeekers)} icon={HeartHandshake}
@@ -674,6 +758,7 @@ export default function FamilyManagementPage() {
       {tab === "access" && <LinksSection key="access" kind="access" canManage={canManage} />}
       {tab === "chaperones" && <ChaperonesSection canManage={canManage} />}
       {tab === "candidates" && <LinksSection key="candidate" kind="candidate" canManage={canManage} />}
+      {tab === "rooms" && <RoomsSection canManage={canManage} />}
       {tab === "marital" && <MaritalSection canManage={canManage} />}
       {tab === "reports" && canViewReports && <ReportsSection canManage={canManageReports} />}
     </div>
