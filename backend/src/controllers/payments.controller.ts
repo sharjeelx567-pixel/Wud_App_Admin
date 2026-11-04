@@ -112,8 +112,8 @@ export async function refundTransaction(req: Request, res: Response): Promise<vo
 
 export async function getSubscriptionMetrics(req: Request, res: Response): Promise<void> {
   try {
-    const snapshot = await db.collection('users').where('isPremium', '==', true).get();
-    const activePremiumCount = snapshot.size;
+    // count() aggregate — no need to download every premium user's document.
+    const activePremiumCount = (await db.collection('users').where('isPremium', '==', true).count().get()).data().count;
 
     let monthlyRevenue = 0;
     const thirtyDaysAgo = new Date();
@@ -122,6 +122,7 @@ export async function getSubscriptionMetrics(req: Request, res: Response): Promi
     const txSnapshot = await db.collection('transactions')
       .where('status', '==', 'completed')
       .where('timestamp', '>=', Timestamp.fromDate(thirtyDaysAgo))
+      .select('amount', 'isTestPayment') // only the fields summed below
       .get();
 
     txSnapshot.docs.forEach(doc => {

@@ -1,6 +1,7 @@
 ﻿// @ts-nocheck
 import { Request, Response } from 'express';
 import { db, admin } from '../config/firebase';
+import { AggregateField } from 'firebase-admin/firestore';
 import { successResponse, errorResponse, serverTimestamp } from '../utils/helpers';
 import { DashboardStats } from '../types';
 
@@ -15,7 +16,7 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
     const [
       totalSnap, premiumSnap, pendingPhotosSnap,
       vrPendingSnap, pendingReportsSnap, bannedSnap, todaySnap,
-      completedTxSnap, pendingRishtaSnap, pendingCommunitySnap,
+      realRevenue, pendingRishtaSnap, pendingCommunitySnap,
       pendingPostReportsSnap, pendingSupportReportsSnap,
       vcEduSnap, vcSingleSnap, vcIncomeSnap, vcPropSnap, voicePendingSnap,
     ] = await Promise.all([
@@ -37,7 +38,15 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       // (30-day revenue) — this one is all-time, matching the dashboard's
       // "Revenue Generated" card, which previously always showed PKR 0
       // because DashboardStats never included a totalRevenue field at all.
-      db.collection('transactions').where('status', '==', 'completed').get(),
+      // Aggregate sums — a few index reads instead of downloading every
+      // completed transaction on each 10s sidebar poll. Test payments are
+      // summed separately and subtracted (same exclusion as before).
+      Promise.all([
+        db.collection('transactions').where('status', '==', 'completed')
+          .aggregate({ total: AggregateField.sum('amount') }).get(),
+        db.collection('transactions').where('status', '==', 'completed').where('isTestPayment', '==', true)
+          .aggregate({ total: AggregateField.sum('amount') }).get(),
+      ]).then(([all, test]) => (all.data().total || 0) - (test.data().total || 0)),
       // Rishta + Community posts awaiting admin approval (their sidebar badges).
       db.collection('rishta_posts').where('status', '==', 'pending').count().get(),
       db.collection('community_posts').where('status', '==', 'pending').count().get(),
@@ -61,10 +70,7 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
 
     // Development/test payments (isTestPayment:true) are excluded from REAL
     // revenue — they still appear individually in the transactions ledger.
-    const totalRevenue = completedTxSnap.docs.reduce(
-      (sum, doc) => sum + (doc.data().isTestPayment === true ? 0 : (doc.data().amount || 0)),
-      0,
-    );
+    const totalRevenue = realRevenue;
 
     const stats: DashboardStats = {
       totalUsers: totalSnap.data().count,

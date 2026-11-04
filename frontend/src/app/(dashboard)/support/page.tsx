@@ -97,6 +97,13 @@ export default function SupportPage() {
     refetchInterval: 5000,
   });
 
+  // The sidebar unread badge now polls every 60s; while this page is open,
+  // refresh it whenever the ticket list changes (opening a ticket marks it
+  // read) so it stays as current as it was with the old 5s poll.
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["support-unread-count"] });
+  }, [ticketsData, queryClient]);
+
   const filteredTickets = React.useMemo(() => {
     if (!ticketsData) return [];
     return ticketsData.filter((ticket) => {
@@ -123,6 +130,11 @@ export default function SupportPage() {
     enabled: !!selectedTicketId,
     refetchInterval: 3000,
   });
+
+  // Opening a ticket marks it read server-side — refresh the badge then too.
+  useEffect(() => {
+    if (activeTicketData) queryClient.invalidateQueries({ queryKey: ["support-unread-count"] });
+  }, [activeTicketData?.ticket?.id, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Send Reply Mutation
   const replyMutation = useMutation({

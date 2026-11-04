@@ -5,8 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "../../store/authStore";
 import Sidebar from "../../components/layout/Sidebar";
 import TopBar from "../../components/layout/TopBar";
-import { useQuery } from "@tanstack/react-query";
-import api from "../../services/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import api, { ADMIN_MUTATED_EVENT } from "../../services/api";
 import { DashboardStats } from "../../types";
 import { useDesktopNotification } from "../../hooks/useDesktopNotification";
 
@@ -51,7 +51,11 @@ export default function DashboardLayout({
       return response.data.data;
     },
     enabled: isAuthenticated && !isCoach,
-    refetchInterval: 10000,
+    // 60s poll (was 10s — each poll runs ~18 Firestore count queries) plus an
+    // immediate refresh whenever the admin returns to this tab. Polling pauses
+    // while the tab is in the background (React Query default).
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: unreadSupport } = useQuery({
@@ -61,8 +65,23 @@ export default function DashboardLayout({
       return response.data.data.count;
     },
     enabled: isAuthenticated && !isCoach,
-    refetchInterval: 5000,
+    // 60s poll (was 5s) + refresh on returning to the tab; the Support page
+    // itself keeps its own faster live polling while it is open.
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
   });
+
+  // Any successful admin write (approve, resolve, reply…) refreshes the badges
+  // immediately, so the longer 60s poll never shows a stale count after an action.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const refresh = () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats-badges"] });
+      queryClient.invalidateQueries({ queryKey: ["support-unread-count"] });
+    };
+    window.addEventListener(ADMIN_MUTATED_EVENT, refresh);
+    return () => window.removeEventListener(ADMIN_MUTATED_EVENT, refresh);
+  }, [queryClient]);
 
   const pendingCounts = {
     photos: stats?.pendingPhotos || 0,

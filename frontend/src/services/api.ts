@@ -24,8 +24,18 @@ api.interceptors.request.use(
 );
 
 // Handle expired tokens and automatic refresh
+/** Fired after every successful write so the sidebar badges (now polled every
+ *  60s) refresh at once — e.g. approving a photo drops the count immediately. */
+export const ADMIN_MUTATED_EVENT = 'admin:mutated';
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const method = (response.config?.method || 'get').toLowerCase();
+    if (method !== 'get' && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(ADMIN_MUTATED_EVENT));
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {

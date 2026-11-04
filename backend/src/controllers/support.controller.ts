@@ -326,10 +326,13 @@ export async function sendAdminReply(req: Request, res: Response): Promise<void>
 
 export async function getUnreadTicketsCount(req: Request, res: Response): Promise<void> {
   try {
+    // count() aggregate — polled every 5s by the sidebar badge, so don't
+    // download the ticket documents just to count them.
     const snapshot = await db.collection('support_tickets')
       .where('unreadCountAdmin', '>', 0)
+      .count()
       .get();
-    res.json(successResponse({ count: snapshot.size }));
+    res.json(successResponse({ count: snapshot.data().count }));
   } catch (error) {
     res.status(500).json(errorResponse('Failed to fetch unread count', error));
   }
