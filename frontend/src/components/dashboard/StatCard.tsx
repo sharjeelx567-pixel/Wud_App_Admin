@@ -72,9 +72,11 @@ export default function StatCard({
         style={{ background: `radial-gradient(circle, ${theme.glow}, transparent 70%)` }}
       />
 
-      <div className="relative flex items-start justify-between">
-        <div className="min-w-0">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+      {/* gap-3 + flex-1 keep a long title from running underneath the icon;
+          it wraps (breaking an over-long word if it must) instead. */}
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block leading-snug [overflow-wrap:anywhere]">
             {title}
           </span>
           <h3 className="text-4xl font-extrabold font-display text-slate-900 mt-2 tracking-tight">
