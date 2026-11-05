@@ -292,7 +292,35 @@ export async function sendAdminReply(req: Request, res: Response): Promise<void>
 
     const msgType = mediaUrl ? 'image' : (type || 'text');
 
+    // WhatsApp-style reply: the quote is read from the ORIGINAL message on
+    // the server (never trusted from the request body), and only a message
+    // of this same ticket can be quoted. Same flat fields as the app's chat
+    // messages (replyToId / replyToText / replyToSenderName / replyToType).
+    let replyFields: Record<string, string> = {};
+    const replyToId = typeof req.body?.replyToId === 'string' ? req.body.replyToId.trim() : '';
+    if (replyToId) {
+      const quoted = await db.collection('support_tickets').doc(id).collection('messages').doc(replyToId).get();
+      if (!quoted.exists) {
+        res.status(400).json(errorResponse('The message you are replying to was not found'));
+        return;
+      }
+      const q = quoted.data() || {};
+      const qText = String(q.content || '').trim();
+      let senderName = 'Support';
+      if (q.senderType !== 'admin') {
+        const t = (await db.collection('support_tickets').doc(id).get()).data();
+        senderName = await resolveUserDisplayName(t?.userId, t?.userDisplayName) || 'User';
+      }
+      replyFields = {
+        replyToId: quoted.id,
+        replyToText: qText ? qText.slice(0, 200) : (q.mediaUrl ? '[Photo]' : ''),
+        replyToSenderName: senderName,
+        replyToType: String(q.type || 'text'),
+      };
+    }
+
     await msgRef.set({
+      ...replyFields,
       senderId: adminId,
       senderType: 'admin',
       content: content || '',

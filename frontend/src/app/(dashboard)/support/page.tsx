@@ -20,7 +20,8 @@ import {
   ImageIcon,
   ExternalLink,
   LifeBuoy,
-  ShieldCheck
+  ShieldCheck,
+  Reply
 } from "lucide-react";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
@@ -46,6 +47,11 @@ interface Message {
   timestamp: { _seconds: number; _nanoseconds: number };
   isRead: boolean;
   delivered: boolean;
+  /** WhatsApp-style quote of an earlier message (same fields as app chats). */
+  replyToId?: string | null;
+  replyToText?: string | null;
+  replyToSenderName?: string | null;
+  replyToType?: string | null;
 }
 
 export default function SupportPage() {
@@ -56,11 +62,18 @@ export default function SupportPage() {
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [replyText, setReplyText] = useState("");
+  // The message being replied to (quoted above the input), like WhatsApp.
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewModalImg, setPreviewModalImg] = useState<string | null>(null);
+
+  // A quote belongs to one ticket — drop it when another ticket is opened.
+  useEffect(() => {
+    setReplyingTo(null);
+  }, [selectedTicketId]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -142,15 +155,18 @@ export default function SupportPage() {
       content,
       mediaUrl,
       type,
+      replyToId,
     }: {
       content: string;
       mediaUrl?: string | null;
       type: string;
+      replyToId?: string | null;
     }) => {
-      await api.post(`/support/tickets/${selectedTicketId}/reply`, { content, mediaUrl, type });
+      await api.post(`/support/tickets/${selectedTicketId}/reply`, { content, mediaUrl, type, replyToId });
     },
     onSuccess: () => {
       setReplyText("");
+      setReplyingTo(null);
       clearSelectedFile();
       queryClient.invalidateQueries({ queryKey: ["supportTicket", selectedTicketId] });
       queryClient.invalidateQueries({ queryKey: ["supportTickets"] });
@@ -227,6 +243,7 @@ export default function SupportPage() {
         content: replyText.trim(),
         mediaUrl: uploadedMediaUrl,
         type: msgType,
+        replyToId: replyingTo?.id ?? null,
       });
     } catch (err: any) {
       console.error("Failed to send message:", err);
@@ -464,7 +481,7 @@ export default function SupportPage() {
                   return (
                     <div
                       key={msg.id}
-                      className={`flex flex-col ${isAdmin ? "items-end" : "items-start"}`}
+                      className={`group flex items-center gap-2 ${isAdmin ? "flex-row-reverse" : "flex-row"}`}
                     >
                       <div
                         className={`max-w-[70%] rounded-2xl p-4 text-xs ${
@@ -473,6 +490,20 @@ export default function SupportPage() {
                             : "bg-white border border-slate-200/80 text-slate-800 shadow-xs"
                         }`}
                       >
+                        {msg.replyToId && (
+                          <div
+                            className={`mb-2 rounded-lg border-l-4 px-3 py-2 ${
+                              isAdmin
+                                ? "bg-indigo-500/60 border-indigo-200 text-indigo-50"
+                                : "bg-slate-50 border-indigo-400 text-slate-600"
+                            }`}
+                          >
+                            <p className="text-[10px] font-bold mb-0.5">
+                              {msg.replyToSenderName || "Message"}
+                            </p>
+                            <p className="line-clamp-2 whitespace-pre-wrap">{msg.replyToText || "[Message]"}</p>
+                          </div>
+                        )}
                         {msg.mediaUrl && (
                           <div
                             className="mb-2 rounded-xl overflow-hidden cursor-pointer relative group"
@@ -502,6 +533,17 @@ export default function SupportPage() {
                           )}
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyingTo(msg);
+                          textareaRef.current?.focus();
+                        }}
+                        className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-200/70 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
+                        title="Reply to this message"
+                      >
+                        <Reply className="w-4 h-4" />
+                      </button>
                     </div>
                   );
                 })
@@ -518,6 +560,29 @@ export default function SupportPage() {
                   className="absolute bottom-20 left-4 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-200"
                 >
                   <EmojiPicker onEmojiClick={handleEmojiClick} lazyLoadEmojis={true} />
+                </div>
+              )}
+
+              {/* Replying-to quote (WhatsApp style) */}
+              {replyingTo && (
+                <div className="mb-3 flex items-start gap-3 p-2.5 bg-slate-50 border border-slate-200 border-l-4 border-l-indigo-500 rounded-xl">
+                  <Reply className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-indigo-700">
+                      Replying to {replyingTo.senderType === "admin" ? "your message" : getUserName(activeTicketData!.ticket)}
+                    </p>
+                    <p className="text-xs text-slate-600 truncate">
+                      {replyingTo.content || (replyingTo.mediaUrl ? "[Photo]" : "[Message]")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(null)}
+                    className="p-1 hover:bg-slate-200 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                    title="Cancel reply"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               )}
 
