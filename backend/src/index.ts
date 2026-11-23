@@ -7,7 +7,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { initializeFirebase, db } from './config/firebase';
 import apiRoutes from './routes';
-import { renderParentRoom } from './controllers/parentRoom.controller';
+import { renderParentRoom, renderInvite } from './controllers/parentRoom.controller';
 import * as bcrypt from 'bcryptjs';
 import { APP_NAME } from './config/branding';
 
@@ -109,6 +109,8 @@ app.use('/api', apiRoutes);
 // is the access token. vercel.json rewrites every path to this function, so
 // `/parent-room/:roomId` reaches Express with the original path intact.
 app.get('/parent-room/:roomId', renderParentRoom);
+// UC-02 family invite link (public page showing the claim code).
+app.get('/invite/:code', renderInvite);
 
 app.get(['/', '/api'], (req, res) => {
   res.json({
